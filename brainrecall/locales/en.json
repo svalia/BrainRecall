@@ -378,6 +378,32 @@
       "d30_upgrade_cta": "Explore Start & Pro Plans (D27)",
       "d30_manual_cta": "Create card manually for free"
     },
+    "billing": {
+      "d27_title": "Plans & AI Quotas",
+      "d27_current_plan": "Current plan: {plan}",
+      "d27_period_end": "Paid period ends: {date}",
+      "d27_usage_topics": "Active topics: {used} of {limit}",
+      "d27_usage_habits": "Active habits: {used} of {limit}",
+      "d27_usage_tokens": "AI import tokens: {used} of {limit}",
+      "d27_usage_checks": "AI answer checks: {used} of {limit}",
+      "d27_plan_free": "Free — 0 ⭐ (3 topics, 3 habits, 500 manual cards forever)",
+      "d27_plan_start": "Start — 499 ⭐ / 30d (10 topics, 10 habits, 200,000 AI tokens)",
+      "d27_plan_pro": "Pro — 1,099 ⭐ / 30d (50 topics, 30 habits, 600,000 AI tokens)",
+      "d27_subscribe_start_btn": "Subscribe to Start for 499 ⭐",
+      "d27_subscribe_pro_btn": "Subscribe to Pro for 1,099 ⭐",
+      "d27_manage_sub_btn": "Manage subscription & auto-renewal (D28)",
+      "d27_downgrade_banner": "Please select up to 3 active topics and habits for your Free plan (D29).",
+      "d28_title": "Manage Stars Subscription",
+      "d28_auto_renew_on": "Auto-renewal enabled (billed every 30 days)",
+      "d28_auto_renew_off": "Auto-renewal disabled — access continues until period end",
+      "d28_cancel_btn": "Turn off auto-renewal",
+      "d28_refund_btn": "Request Stars refund (if 0 AI quota used)",
+      "d29_title": "Select Active Set on Free Plan",
+      "d29_desc": "On the Free plan, up to 3 topics and 3 habits remain active. Others switch to read-only mode (view & export preserved, nothing deleted).",
+      "d29_topics_header": "Choose up to 3 active topics",
+      "d29_habits_header": "Choose up to 3 active habits",
+      "d29_save_cta": "Save active selection"
+    },
     "gestures": {
       "back_hint": "Swipe from the edge to go back"
     }

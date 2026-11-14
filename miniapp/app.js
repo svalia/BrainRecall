@@ -348,6 +348,10 @@
       renderD20(vp);
     } else if (state.currentScreen === "D21") {
       renderD21(vp);
+    } else if (state.currentScreen === "D27" || state.currentScreen === "D28") {
+      renderD27D28(vp);
+    } else if (state.currentScreen === "D29") {
+      renderD29(vp);
     } else if (state.currentScreen === "D36") {
       renderD36(vp);
     } else if (state.currentScreen === "D39") {
@@ -3907,6 +3911,249 @@
         openItemEditorD09Edit(state.activeTopicId, null, false);
       });
     }
+  }
+
+  // ==================== D27, D28 & D29: Telegram Stars Billing, Subscriptions & Downgrade Active Set ====================
+  async function renderD27D28(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.billing.d27_title"), true) + '<div class="sk" style="height:180px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const data = await apiFetch("api/v1/billing/plans");
+      const ent = data.entitlement;
+      const usage = ent.usage;
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.billing.d27_title"), true) +
+        (ent.downgrade_selection_required
+          ? '<div class="bn wn col" style="gap:8px;"><div>' +
+            escapeHtml(t("miniapp.billing.d27_downgrade_banner")) +
+            '</div><button type="button" class="btn b2 bsm" id="d27-open-d29-btn">' +
+            escapeHtml(t("miniapp.billing.d29_title")) +
+            "</button></div>"
+          : "") +
+        '<section class="card col" style="gap:10px;">' +
+        '<div class="row sp">' +
+        '<span class="chip c-pr">' +
+        escapeHtml(t("miniapp.billing.d27_current_plan", { plan: ent.plan_code.toUpperCase() })) +
+        "</span>" +
+        (ent.period_end
+          ? '<span class="xs mu">' +
+            escapeHtml(t("miniapp.billing.d27_period_end", { date: ent.period_end.slice(0, 10) })) +
+            "</span>"
+          : "") +
+        "</div>" +
+        '<div class="sm">' +
+        escapeHtml(t("miniapp.billing.d27_usage_topics", { used: usage.active_topics, limit: usage.topics_limit })) +
+        "</div>" +
+        '<div class="sm">' +
+        escapeHtml(t("miniapp.billing.d27_usage_habits", { used: usage.active_habits, limit: usage.habits_limit })) +
+        "</div>" +
+        '<div class="sm">' +
+        escapeHtml(
+          t("miniapp.billing.d27_usage_tokens", {
+            used: usage.import_tokens.used,
+            limit: usage.import_tokens.limit,
+          })
+        ) +
+        "</div>" +
+        '<div class="sm">' +
+        escapeHtml(
+          t("miniapp.billing.d27_usage_checks", {
+            used: usage.ai_checks.used,
+            limit: usage.ai_checks.limit,
+          })
+        ) +
+        "</div>" +
+        (ent.plan_code === "start" || ent.plan_code === "pro"
+          ? '<div class="dv"></div>' +
+            '<div class="xs mu">' +
+            escapeHtml(
+              ent.auto_renew ? t("miniapp.billing.d28_auto_renew_on") : t("miniapp.billing.d28_auto_renew_off")
+            ) +
+            "</div>" +
+            (ent.auto_renew
+              ? '<button type="button" class="btn b2 bsm" id="d28-cancel-btn">' +
+                escapeHtml(t("miniapp.billing.d28_cancel_btn")) +
+                "</button>"
+              : "") +
+            '<button type="button" class="btn b3 bsm" id="d28-refund-btn">' +
+            escapeHtml(t("miniapp.billing.d28_refund_btn")) +
+            "</button>"
+          : "") +
+        "</section>" +
+        '<section class="card col" style="gap:12px;">' +
+        '<div class="sm">' +
+        escapeHtml(t("miniapp.billing.d27_plan_free")) +
+        "</div>" +
+        '<div class="dv"></div>' +
+        '<div class="b">' +
+        escapeHtml(t("miniapp.billing.d27_plan_start")) +
+        "</div>" +
+        '<button type="button" class="btn" id="d27-sub-start-btn">' +
+        escapeHtml(t("miniapp.billing.d27_subscribe_start_btn")) +
+        "</button>" +
+        '<div class="dv"></div>' +
+        '<div class="b">' +
+        escapeHtml(t("miniapp.billing.d27_plan_pro")) +
+        "</div>" +
+        '<button type="button" class="btn" id="d27-sub-pro-btn">' +
+        escapeHtml(t("miniapp.billing.d27_subscribe_pro_btn")) +
+        "</button>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const d29Btn = document.getElementById("d27-open-d29-btn");
+      if (d29Btn) {
+        d29Btn.addEventListener("click", function () {
+          navigateTo("D29");
+        });
+      }
+
+      async function handleSubscribe(planCode) {
+        triggerHaptic("impact", "light");
+        try {
+          const res = await apiFetch("api/v1/billing/subscribe", {
+            method: "POST",
+            body: { plan_code: planCode, confirm_immediately_in_dev: !state.insideTelegram },
+          });
+          if (res.invoice_link && tg && typeof tg.openInvoice === "function") {
+            tg.openInvoice(res.invoice_link, function () {
+              renderCurrentScreen();
+            });
+          } else {
+            renderCurrentScreen();
+          }
+        } catch (_e) {}
+      }
+
+      const startBtn = document.getElementById("d27-sub-start-btn");
+      if (startBtn) {
+        startBtn.addEventListener("click", function () {
+          handleSubscribe("start");
+        });
+      }
+      const proBtn = document.getElementById("d27-sub-pro-btn");
+      if (proBtn) {
+        proBtn.addEventListener("click", function () {
+          handleSubscribe("pro");
+        });
+      }
+
+      const cancelBtn = document.getElementById("d28-cancel-btn");
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", async function () {
+          try {
+            await apiFetch("api/v1/billing/cancel", { method: "POST", body: {} });
+            renderCurrentScreen();
+          } catch (_e) {}
+        });
+      }
+
+      const refundBtn = document.getElementById("d28-refund-btn");
+      if (refundBtn) {
+        refundBtn.addEventListener("click", async function () {
+          try {
+            const ref = await apiFetch("api/v1/billing/refund", { method: "POST", body: {} });
+            if (ref.downgrade_selection_required) {
+              navigateTo("D29");
+            } else {
+              renderCurrentScreen();
+            }
+          } catch (_e) {}
+        });
+      }
+    } catch (_e) {}
+  }
+
+  async function renderD29(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.billing.d29_title"), true) + '<div class="sk" style="height:160px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const opts = await apiFetch("api/v1/billing/downgrade-options");
+      const topics = opts.topics || [];
+      const habits = opts.habits || [];
+
+      const topicsHtml = topics
+        .map(function (tp, idx) {
+          return (
+            '<label class="opt" style="cursor:pointer;">' +
+            '<input type="checkbox" data-d29-topic="' +
+            escapeHtml(tp.id) +
+            '" ' +
+            (idx < 3 ? "checked" : "") +
+            " />" +
+            '<span class="grow b">' +
+            escapeHtml(tp.title) +
+            "</span></label>"
+          );
+        })
+        .join("");
+
+      const habitsHtml = habits
+        .map(function (hb, idx) {
+          return (
+            '<label class="opt" style="cursor:pointer;">' +
+            '<input type="checkbox" data-d29-habit="' +
+            escapeHtml(hb.id) +
+            '" ' +
+            (idx < 3 ? "checked" : "") +
+            " />" +
+            '<span class="grow b">' +
+            escapeHtml(hb.title) +
+            "</span></label>"
+          );
+        })
+        .join("");
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.billing.d29_title"), true) +
+        '<section class="card col" style="gap:12px;">' +
+        '<h1 class="h2">' +
+        escapeHtml(t("miniapp.billing.d29_title")) +
+        "</h1>" +
+        '<p class="sm mu">' +
+        escapeHtml(t("miniapp.billing.d29_desc")) +
+        "</p>" +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.billing.d29_topics_header")) +
+        "</div>" +
+        topicsHtml +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.billing.d29_habits_header")) +
+        "</div>" +
+        habitsHtml +
+        '<button type="button" class="btn" id="d29-save-btn">' +
+        escapeHtml(t("miniapp.billing.d29_save_cta")) +
+        "</button>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const saveBtn = document.getElementById("d29-save-btn");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", async function () {
+          const selTopics = [];
+          vp.querySelectorAll("[data-d29-topic]").forEach(function (cb) {
+            if (cb.checked && selTopics.length < 3) selTopics.push(cb.getAttribute("data-d29-topic"));
+          });
+          const selHabits = [];
+          vp.querySelectorAll("[data-d29-habit]").forEach(function (cb) {
+            if (cb.checked && selHabits.length < 3) selHabits.push(cb.getAttribute("data-d29-habit"));
+          });
+
+          try {
+            await apiFetch("api/v1/billing/select-active-set", {
+              method: "POST",
+              body: { active_topic_ids: selTopics, active_habit_ids: selHabits },
+            });
+            navigateTo("D04", { pushHistory: false });
+          } catch (_e) {}
+        });
+      }
+    } catch (_e) {}
   }
 
   // ==================== Bottom Sheet Controller (Section 3.12) ====================
