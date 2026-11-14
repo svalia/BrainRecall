@@ -334,6 +334,14 @@
       renderD12(vp);
     } else if (state.currentScreen === "D13") {
       renderD13(vp);
+    } else if (state.currentScreen === "D14" || state.currentScreen === "D15") {
+      renderD14D15(vp);
+    } else if (state.currentScreen === "D16") {
+      renderD16(vp);
+    } else if (state.currentScreen === "D17") {
+      renderD17(vp);
+    } else if (state.currentScreen === "D18") {
+      renderD18(vp);
     } else if (state.currentScreen === "D19") {
       renderD19(vp);
     } else if (state.currentScreen === "D20") {
@@ -1197,6 +1205,9 @@
         '<button type="button" class="opt" id="d06-opt-topic"><span class="grow b">' +
         escapeHtml(t("miniapp.knowledge.add_topic_opt")) +
         "</span></button>" +
+        '<button type="button" class="opt" id="d06-opt-material"><span class="grow b">✨ ' +
+        escapeHtml(t("miniapp.materials.d14_title")) +
+        "</span></button>" +
         (topicId
           ? '<button type="button" class="opt" id="d06-opt-item"><span class="grow b">' +
             escapeHtml(t("miniapp.knowledge.add_item_opt")) +
@@ -1213,6 +1224,13 @@
       optTopic.addEventListener("click", function () {
         closeBottomSheet();
         openTopicFormD07(null);
+      });
+    }
+    const optMat = document.getElementById("d06-opt-material");
+    if (optMat) {
+      optMat.addEventListener("click", function () {
+        closeBottomSheet();
+        openMaterialInputD14(topicId || null);
       });
     }
     const optItem = document.getElementById("d06-opt-item");
@@ -3434,6 +3452,461 @@
         state.methodIntros = res.methods;
       }
     } catch (_e) {}
+  }
+
+  // ==================== D14, D15, D16, D17, D18 & D30: Materials, AI Import & Quota Sheet ====================
+  function openMaterialInputD14(topicId) {
+    state.materialDraft = {
+      topic_id: topicId || state.activeTopicId || null,
+      mode: "text",
+      title: "",
+      goal: "exam",
+      text: "",
+    };
+    navigateTo("D14");
+  }
+
+  function renderD14D15(vp) {
+    const draft = state.materialDraft || {
+      topic_id: state.activeTopicId || null,
+      mode: "text",
+      title: "",
+      goal: "exam",
+      text: "",
+    };
+    state.materialDraft = draft;
+
+    vp.innerHTML =
+      renderTopBar(t("miniapp.materials.d14_title"), true) +
+      '<section class="card col" style="gap:14px;">' +
+      '<div class="seg">' +
+      '<button type="button" class="' +
+      (draft.mode === "text" ? "on" : "") +
+      '" data-mat-mode="text">' +
+      escapeHtml(t("miniapp.materials.d14_tab_text")) +
+      "</button>" +
+      '<button type="button" class="' +
+      (draft.mode === "file" ? "on" : "") +
+      '" data-mat-mode="file">' +
+      escapeHtml(t("miniapp.materials.d14_tab_file")) +
+      "</button>" +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d14-title">' +
+      escapeHtml(t("miniapp.materials.d14_title_label")) +
+      "</label>" +
+      '<input id="d14-title" class="inp" type="text" value="' +
+      escapeHtml(draft.title) +
+      '" />' +
+      "</div>" +
+      (draft.mode === "text"
+        ? '<div class="col" style="gap:6px;">' +
+          '<label class="lab" for="d14-text">' +
+          escapeHtml(t("miniapp.materials.d14_text_label")) +
+          "</label>" +
+          '<textarea id="d14-text" class="inp ta" style="min-height:160px;" placeholder="' +
+          escapeHtml(t("miniapp.materials.d14_text_placeholder")) +
+          '">' +
+          escapeHtml(draft.text) +
+          "</textarea>" +
+          "</div>" +
+          '<button type="button" class="btn" id="d14-submit-text-btn">' +
+          escapeHtml(t("miniapp.materials.d14_estimate_btn")) +
+          "</button>"
+        : '<div class="col" style="gap:10px;">' +
+          '<div class="bn in">' +
+          escapeHtml(t("miniapp.materials.d15_file_hint")) +
+          "</div>" +
+          '<input id="d15-file-inp" class="inp" type="file" accept=".txt,.md,.pdf,.docx,.epub" />' +
+          '<button type="button" class="btn" id="d15-upload-btn">' +
+          escapeHtml(t("miniapp.materials.d15_upload_btn")) +
+          "</button>" +
+          "</div>") +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    vp.querySelectorAll("[data-mat-mode]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        draft.mode = btn.getAttribute("data-mat-mode");
+        renderCurrentScreen();
+      });
+    });
+
+    const titleInp = document.getElementById("d14-title");
+    if (titleInp) {
+      titleInp.addEventListener("input", function () {
+        draft.title = titleInp.value;
+      });
+    }
+
+    const textInp = document.getElementById("d14-text");
+    if (textInp) {
+      textInp.addEventListener("input", function () {
+        draft.text = textInp.value;
+      });
+    }
+
+    const submitTextBtn = document.getElementById("d14-submit-text-btn");
+    if (submitTextBtn) {
+      submitTextBtn.addEventListener("click", async function () {
+        if (!draft.title.trim() || draft.text.trim().length < 10) return;
+        triggerHaptic("impact", "light");
+        try {
+          const created = await apiFetch("api/v1/materials/text", {
+            method: "POST",
+            body: {
+              topic_id: draft.topic_id,
+              title: draft.title.trim(),
+              goal: draft.goal || "exam",
+              language: state.locale,
+              text: draft.text.trim(),
+            },
+          });
+          state.activeMaterial = created.material;
+          state.activeTopicId = created.material.topic_id;
+          navigateTo("D16");
+        } catch (_e) {}
+      });
+    }
+
+    const uploadBtn = document.getElementById("d15-upload-btn");
+    if (uploadBtn) {
+      uploadBtn.addEventListener("click", async function () {
+        const fileInp = document.getElementById("d15-file-inp");
+        if (!fileInp || !fileInp.files || !fileInp.files[0]) return;
+        const f = fileInp.files[0];
+        const formData = new FormData();
+        formData.append("file", f);
+        if (draft.topic_id) formData.append("topic_id", draft.topic_id);
+        if (draft.title.trim()) formData.append("title", draft.title.trim());
+        formData.append("goal", draft.goal || "exam");
+        formData.append("language", state.locale);
+
+        const headers = {};
+        if (state.sessionToken) headers["Authorization"] = "Bearer " + state.sessionToken;
+        if (!state.insideTelegram) headers["X-Demo-User-Id"] = "999000111";
+
+        try {
+          const resp = await fetch("api/v1/materials/upload", {
+            method: "POST",
+            headers: headers,
+            body: formData,
+          });
+          if (!resp.ok) return;
+          const created = await resp.json();
+          state.activeMaterial = created.material;
+          state.activeTopicId = created.material.topic_id;
+          navigateTo("D16");
+        } catch (_e) {}
+      });
+    }
+  }
+
+  async function renderD16(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.materials.d16_title"), true) + '<div class="sk" style="height:140px;"></div>';
+    bindLanguageButtons(vp);
+
+    if (!state.activeMaterial || !state.activeMaterial.id) {
+      navigateTo("D14", { pushHistory: false });
+      return;
+    }
+
+    try {
+      const est = await apiFetch("api/v1/materials/estimate", {
+        method: "POST",
+        body: { material_id: state.activeMaterial.id },
+      });
+      state.activeEstimate = est;
+
+      const ctaLabel = est.trial_eligible
+        ? t("miniapp.materials.d16_start_trial_cta")
+        : t("miniapp.materials.d16_start_cta");
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.materials.d16_title"), true) +
+        '<section class="card col" style="gap:12px;">' +
+        '<h1 class="h2">' +
+        escapeHtml(est.title) +
+        "</h1>" +
+        '<div class="chip c-pr">' +
+        escapeHtml(t("miniapp.materials.d16_tokens_label", { tokens: est.token_count })) +
+        "</div>" +
+        '<div class="sm mu">' +
+        escapeHtml(t("miniapp.materials.d16_quota_after", { remaining: est.quota.after_operation })) +
+        "</div>" +
+        (est.trial_eligible
+          ? '<div class="bn ok">' + escapeHtml(t("miniapp.materials.d16_trial_banner")) + "</div>"
+          : "") +
+        '<div class="bn in">' +
+        escapeHtml(t("miniapp.materials.d16_ai_disclosure")) +
+        "</div>" +
+        '<button type="button" class="btn" id="d16-confirm-ai-btn">' +
+        escapeHtml(ctaLabel) +
+        "</button>" +
+        '<button type="button" class="btn b2" id="d16-manual-btn">' +
+        escapeHtml(t("miniapp.materials.d16_manual_fallback")) +
+        "</button>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const confirmBtn = document.getElementById("d16-confirm-ai-btn");
+      if (confirmBtn) {
+        confirmBtn.addEventListener("click", async function () {
+          if (!est.can_proceed) {
+            openQuotaLimitSheetD30({
+              required_amount: est.token_count,
+              remaining: est.quota.effective_remaining,
+            });
+            return;
+          }
+          state.pendingImportRequest = {
+            material_id: est.material_id,
+            operation_id: "op-" + Date.now(),
+            estimate_signature: est.estimate_signature,
+            activate_trial: Boolean(est.trial_eligible),
+            ai_consent_accepted: true,
+          };
+          navigateTo("D17");
+        });
+      }
+
+      const manualBtn = document.getElementById("d16-manual-btn");
+      if (manualBtn) {
+        manualBtn.addEventListener("click", function () {
+          openItemEditorD09Edit(state.activeTopicId, null, false);
+        });
+      }
+    } catch (_e) {}
+  }
+
+  async function renderD17(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.materials.d17_title"), true) +
+      '<section class="card col" style="gap:14px;">' +
+      '<h1 class="h2">' +
+      escapeHtml(t("miniapp.materials.d17_title")) +
+      "</h1>" +
+      '<div class="col" style="gap:8px;">' +
+      '<div class="bn in">1. ' +
+      escapeHtml(t("miniapp.materials.d17_stage_extract")) +
+      "</div>" +
+      '<div class="bn in">2. ' +
+      escapeHtml(t("miniapp.materials.d17_stage_exercises")) +
+      "</div>" +
+      '<div class="bn in">3. ' +
+      escapeHtml(t("miniapp.materials.d17_stage_validate")) +
+      "</div>" +
+      "</div>" +
+      '<div class="sk" style="height:24px;"></div>' +
+      "</section>";
+    bindLanguageButtons(vp);
+
+    if (!state.pendingImportRequest) {
+      navigateTo("D04", { pushHistory: false });
+      return;
+    }
+
+    try {
+      const reqBody = state.pendingImportRequest;
+      state.pendingImportRequest = null;
+      const res = await apiFetch("api/v1/materials/import-jobs", {
+        method: "POST",
+        body: reqBody,
+      });
+      state.activeImportJob = res;
+      navigateTo("D18", { pushHistory: false });
+    } catch (err) {
+      openQuotaLimitSheetD30({ required_amount: 1000, remaining: 0 });
+      navigateTo("D16", { pushHistory: false });
+    }
+  }
+
+  function renderD18(vp) {
+    const jobData = state.activeImportJob;
+    if (!jobData || !jobData.job) {
+      navigateTo("D04", { pushHistory: false });
+      return;
+    }
+
+    const items = jobData.item_candidates || [];
+    const rels = jobData.relation_candidates || [];
+
+    const itemsHtml = items
+      .map(function (c, idx) {
+        return (
+          '<div class="card col" style="gap:8px; padding:12px;">' +
+          '<div class="row sp">' +
+          '<span class="chip c-pr">' +
+          escapeHtml(c.item_type) +
+          "</span>" +
+          '<input type="checkbox" data-cand-item="' +
+          escapeHtml(c.id) +
+          '" ' +
+          (c.selected ? "checked" : "") +
+          " />" +
+          "</div>" +
+          '<div class="b">' +
+          escapeHtml(c.prompt) +
+          "</div>" +
+          '<div class="sm">' +
+          escapeHtml(c.answer) +
+          "</div>" +
+          (c.anchor_label
+            ? '<div class="xs mu">📖 ' + escapeHtml(c.anchor_label) + "</div>"
+            : "") +
+          (c.warning_note
+            ? '<div class="bn wn xs">' + escapeHtml(c.warning_note) + "</div>"
+            : "") +
+          "</div>"
+        );
+      })
+      .join("");
+
+    const relsHtml = rels
+      .map(function (r) {
+        return (
+          '<div class="card col" style="gap:6px; padding:12px;">' +
+          '<div class="row sp">' +
+          '<span class="chip">M5 · ' +
+          escapeHtml(r.relation_type) +
+          "</span>" +
+          '<input type="checkbox" data-cand-rel="' +
+          escapeHtml(r.id) +
+          '" ' +
+          (r.selected ? "checked" : "") +
+          " />" +
+          "</div>" +
+          '<div class="sm b">' +
+          escapeHtml(r.prompt) +
+          "</div>" +
+          '<div class="xs mu">' +
+          escapeHtml(r.explanation) +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    vp.innerHTML =
+      renderTopBar(t("miniapp.materials.d18_title"), true) +
+      '<section class="card col" style="gap:10px;">' +
+      '<h1 class="h2">' +
+      escapeHtml(t("miniapp.materials.d18_title")) +
+      "</h1>" +
+      '<p class="sm mu">' +
+      escapeHtml(t("miniapp.materials.d18_subtitle")) +
+      "</p>" +
+      "</section>" +
+      '<div class="eyebrow">' +
+      escapeHtml(t("miniapp.materials.d18_items_section", { count: items.length })) +
+      "</div>" +
+      itemsHtml +
+      (rels.length
+        ? '<div class="eyebrow">' +
+          escapeHtml(t("miniapp.materials.d18_relations_section", { count: rels.length })) +
+          "</div>" +
+          '<div class="xs mu">' +
+          escapeHtml(t("miniapp.materials.d18_relations_hint")) +
+          "</div>" +
+          relsHtml
+        : "") +
+      '<button type="button" class="btn" id="d18-accept-btn">' +
+      escapeHtml(t("miniapp.materials.d18_accept_cta")) +
+      "</button>";
+
+    bindLanguageButtons(vp);
+
+    const acceptBtn = document.getElementById("d18-accept-btn");
+    if (acceptBtn) {
+      acceptBtn.addEventListener("click", async function () {
+        const selectedItemIds = [];
+        vp.querySelectorAll("[data-cand-item]").forEach(function (cb) {
+          if (cb.checked) selectedItemIds.push(cb.getAttribute("data-cand-item"));
+        });
+        const selectedRelIds = [];
+        vp.querySelectorAll("[data-cand-rel]").forEach(function (cb) {
+          if (cb.checked) selectedRelIds.push(cb.getAttribute("data-cand-rel"));
+        });
+
+        triggerHaptic("notification", "success");
+        try {
+          const accepted = await apiFetch(
+            "api/v1/materials/import-jobs/" + encodeURIComponent(jobData.job.id) + "/accept",
+            {
+              method: "POST",
+              body: {
+                item_candidate_ids: selectedItemIds,
+                relation_candidate_ids: selectedRelIds,
+              },
+            }
+          );
+          state.activeTopicId = accepted.topic_id;
+          openBottomSheet({
+            size: "small",
+            title: t("miniapp.materials.d18_accepted_title"),
+            bodyHtml:
+              '<div class="col" style="gap:12px;">' +
+              '<p class="sm">' +
+              escapeHtml(
+                t("miniapp.materials.d18_accepted_desc", {
+                  items: accepted.accepted_items_count,
+                  relations: accepted.accepted_relations_count,
+                })
+              ) +
+              "</p>" +
+              '<button type="button" class="btn" id="d18-go-study-btn">' +
+              escapeHtml(t("miniapp.materials.d18_start_study_cta")) +
+              "</button>" +
+              "</div>",
+          });
+          const goStudyBtn = document.getElementById("d18-go-study-btn");
+          if (goStudyBtn) {
+            goStudyBtn.addEventListener("click", function () {
+              closeBottomSheet();
+              navigateTo("D10", { pushHistory: false });
+            });
+          }
+          navigateTo("D08", { pushHistory: false });
+        } catch (_e) {}
+      });
+    }
+  }
+
+  function openQuotaLimitSheetD30(info) {
+    const req = (info && info.required_amount) || 1000;
+    const rem = (info && info.remaining) || 0;
+    openBottomSheet({
+      size: "medium",
+      title: t("miniapp.materials.d30_title"),
+      bodyHtml:
+        '<div class="col" style="gap:12px;">' +
+        '<div class="bn wn">' +
+        escapeHtml(t("miniapp.materials.d30_desc", { required: req, remaining: rem })) +
+        "</div>" +
+        '<button type="button" class="btn" id="d30-open-plans-btn">' +
+        escapeHtml(t("miniapp.materials.d30_upgrade_cta")) +
+        "</button>" +
+        '<button type="button" class="btn b2" id="d30-manual-btn">' +
+        escapeHtml(t("miniapp.materials.d30_manual_cta")) +
+        "</button>" +
+        "</div>",
+    });
+    const upBtn = document.getElementById("d30-open-plans-btn");
+    if (upBtn) {
+      upBtn.addEventListener("click", function () {
+        closeBottomSheet();
+        navigateTo("D27");
+      });
+    }
+    const manBtn = document.getElementById("d30-manual-btn");
+    if (manBtn) {
+      manBtn.addEventListener("click", function () {
+        closeBottomSheet();
+        openItemEditorD09Edit(state.activeTopicId, null, false);
+      });
+    }
   }
 
   // ==================== Bottom Sheet Controller (Section 3.12) ====================
