@@ -52,6 +52,13 @@
     studyCheckedCriteria: [],
     lastAttemptResult: null,
     lastNeedsCorrective: false,
+    todayData: null,
+    habitsList: [],
+    habitsLimit: 3,
+    activeHabitId: null,
+    activeHabitDetail: null,
+    habitDraft: null,
+    streaksData: null,
   };
 
   function t(key, params) {
@@ -327,6 +334,16 @@
       renderD12(vp);
     } else if (state.currentScreen === "D13") {
       renderD13(vp);
+    } else if (state.currentScreen === "D19") {
+      renderD19(vp);
+    } else if (state.currentScreen === "D20") {
+      renderD20(vp);
+    } else if (state.currentScreen === "D21") {
+      renderD21(vp);
+    } else if (state.currentScreen === "D36") {
+      renderD36(vp);
+    } else if (state.currentScreen === "D39") {
+      renderD39(vp);
     } else {
       renderD03(vp);
     }
@@ -805,69 +822,172 @@
     );
   }
 
-  // ==================== D03: Today Screen Shell ====================
-  function renderD03(vp) {
+  // ==================== D03: Live Today Screen ====================
+  async function renderD03(vp) {
     vp.innerHTML =
       renderTopBar(t("miniapp.d03.greeting"), false) +
-      '<section class="streak">' +
-      '<div class="stk-top">' +
-      '<div class="row" style="gap:12px;">' +
-      '<span class="stk-n">0</span>' +
-      '<div class="stk-u">' +
-      escapeHtml(t("miniapp.d03.day_status_neutral")) +
-      "<span>" +
-      escapeHtml(t("miniapp.common.free_forever")) +
-      "</span></div>" +
-      "</div>" +
-      '<button type="button" class="btn b2 bsm" id="d03-open-d42-btn">' +
-      escapeHtml(t("miniapp.common.why_this_exercise")) +
-      "</button>" +
-      "</div>" +
-      "</section>" +
-      '<section class="card cardp col">' +
-      '<div class="row sp">' +
-      '<h2 class="h2">' +
-      escapeHtml(t("miniapp.d03.study_card_title")) +
-      "</h2>" +
-      '<span class="chip c-pr">' +
-      escapeHtml(((state.user && state.user.daily_study_minutes) || 10) + " " + t("miniapp.common.minutes_short")) +
-      "</span>" +
-      "</div>" +
-      '<p class="mu sm">' +
-      escapeHtml(t("miniapp.d03.study_card_empty")) +
-      "</p>" +
-      '<div class="col" style="gap:8px;">' +
-      '<button type="button" class="btn" id="d03-start-session-btn">' +
-      escapeHtml(t("miniapp.d03.start_session_cta")) +
-      "</button>" +
-      '<button type="button" class="btn b2" id="d03-open-landing-btn">' +
-      escapeHtml(t("miniapp.d00.view_landing_cta")) +
-      "</button>" +
-      "</div>" +
-      "</section>";
-
+      '<div class="sk" style="height:110px; border-radius:28px;"></div>' +
+      '<div class="sk" style="height:150px; border-radius:24px;"></div>';
     bindLanguageButtons(vp);
 
-    const openD42 = document.getElementById("d03-open-d42-btn");
-    if (openD42) {
-      openD42.addEventListener("click", function () {
-        openScienceSheet("M1");
+    try {
+      const td = await apiFetch("api/v1/today");
+      state.todayData = td;
+      const dp = td.day_plan || {};
+      const stk = td.streak || { current: 0, best: 0, freeze_stock: 0, freeze_max: 2 };
+      const habits = td.habits || [];
+
+      const statusKey = "miniapp.d03.day_status_" + (dp.day_state || "neutral");
+      const habitsHtml = habits.length
+        ? '<div class="list">' +
+          habits
+            .map(function (h) {
+              const badge =
+                h.today_outcome === "full_done"
+                  ? '<span class="chip c-ok">✓</span>'
+                  : h.today_outcome === "minimum_done"
+                  ? '<span class="chip c-em">2m ✓</span>'
+                  : '<span class="chip">○</span>';
+              return (
+                '<button type="button" class="li" data-d03-habit="' +
+                escapeHtml(h.id) +
+                '" style="width:100%; background:none; border:0; border-top:1px solid var(--ln); text-align:left; cursor:pointer; font-family:inherit;">' +
+                '<div class="col grow" style="gap:2px;">' +
+                '<div class="b">' +
+                escapeHtml(h.title) +
+                "</div>" +
+                '<div class="sm mu">' +
+                escapeHtml(h.minimum_version) +
+                "</div>" +
+                "</div>" +
+                badge +
+                "</button>"
+              );
+            })
+            .join("") +
+          "</div>"
+        : '<div class="card col"><p class="sm mu">' +
+          escapeHtml(t("miniapp.d03.habits_empty")) +
+          '</p><button type="button" class="btn b2 bsm" id="d03-add-habit-btn">' +
+          escapeHtml(t("miniapp.d03.add_first_habit")) +
+          "</button></div>";
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.d03.greeting"), false) +
+        '<section class="streak" id="d03-streak-card" style="cursor:pointer;">' +
+        '<div class="stk-top">' +
+        '<div class="row" style="gap:12px;">' +
+        '<span class="stk-n">' +
+        stk.current +
+        "</span>" +
+        '<div class="stk-u">' +
+        escapeHtml(t(statusKey)) +
+        "<span>❄️ " +
+        stk.freeze_stock +
+        "/" +
+        stk.freeze_max +
+        " · " +
+        escapeHtml(t("miniapp.common.free_forever")) +
+        "</span></div>" +
+        "</div>" +
+        '<button type="button" class="btn b2 bsm" id="d03-open-d36-btn">🔥 D36</button>' +
+        "</div>" +
+        "</section>" +
+        '<section class="card cardp col">' +
+        '<div class="row sp">' +
+        '<h2 class="h2">' +
+        escapeHtml(t("miniapp.d03.study_card_title")) +
+        "</h2>" +
+        '<span class="chip c-pr">' +
+        dp.required_reviews_done +
+        "/" +
+        dp.required_reviews_total +
+        "</span>" +
+        "</div>" +
+        '<p class="mu sm">' +
+        escapeHtml(t("miniapp.d03.study_card_empty")) +
+        "</p>" +
+        '<div class="col" style="gap:8px;">' +
+        '<button type="button" class="btn" id="d03-start-session-btn">' +
+        escapeHtml(td.active_session_id ? t("miniapp.d03.resume_session_cta") : t("miniapp.d03.start_session_cta")) +
+        "</button>" +
+        '<div class="row" style="gap:8px;">' +
+        '<button type="button" class="btn b2 bsm grow" id="d03-open-d42-btn">' +
+        escapeHtml(t("miniapp.common.why_this_exercise")) +
+        "</button>" +
+        '<button type="button" class="btn b2 bsm grow" id="d03-open-landing-btn">D01</button>' +
+        "</div>" +
+        "</div>" +
+        "</section>" +
+        '<section class="col" style="gap:10px;">' +
+        '<div class="row sp">' +
+        '<h2 class="h2">' +
+        escapeHtml(t("miniapp.d03.habits_card_title")) +
+        "</h2>" +
+        '<span class="chip">' +
+        dp.required_habits_done +
+        "/" +
+        dp.required_habits_total +
+        "</span>" +
+        "</div>" +
+        habitsHtml +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const openD36 = document.getElementById("d03-open-d36-btn");
+      if (openD36) {
+        openD36.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          navigateTo("D36");
+        });
+      }
+      const stkCard = document.getElementById("d03-streak-card");
+      if (stkCard) {
+        stkCard.addEventListener("click", function () {
+          navigateTo("D36");
+        });
+      }
+      const openD42 = document.getElementById("d03-open-d42-btn");
+      if (openD42) {
+        openD42.addEventListener("click", function () {
+          openScienceSheet("M1");
+        });
+      }
+      const startSess = document.getElementById("d03-start-session-btn");
+      if (startSess) {
+        startSess.addEventListener("click", function () {
+          state.sessionTopicFilter = null;
+          state.sessionGroupFilter = null;
+          navigateTo("D10");
+        });
+      }
+      const openLanding = document.getElementById("d03-open-landing-btn");
+      if (openLanding) {
+        openLanding.addEventListener("click", function () {
+          navigateTo("D01");
+        });
+      }
+      const addHabitBtn = document.getElementById("d03-add-habit-btn");
+      if (addHabitBtn) {
+        addHabitBtn.addEventListener("click", function () {
+          openHabitWizardD20(null);
+        });
+      }
+      vp.querySelectorAll("[data-d03-habit]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          const hid = el.getAttribute("data-d03-habit");
+          const hObj = habits.find(function (x) {
+            return x.id === hid;
+          });
+          if (hObj) openHabitMarkSheetD22(hObj);
+        });
       });
-    }
-    const startSess = document.getElementById("d03-start-session-btn");
-    if (startSess) {
-      startSess.addEventListener("click", function () {
-        state.sessionTopicFilter = null;
-        state.sessionGroupFilter = null;
-        navigateTo("D10");
-      });
-    }
-    const openLanding = document.getElementById("d03-open-landing-btn");
-    if (openLanding) {
-      openLanding.addEventListener("click", function () {
-        navigateTo("D01");
-      });
-    }
+
+      if (td.celebration) {
+        openCelebrationSheetD38(td.celebration);
+      }
+    } catch (_e) {}
   }
 
   // ==================== D04: Knowledge & Topics Hub ====================
@@ -2589,6 +2709,561 @@
         navigateTo("D03", { pushHistory: false });
       });
     }
+  }
+
+  // ==================== D19–D23: Atomic Habits List, Wizard, Detail, Check-In & AI Draft ====================
+  async function renderD19(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.habits.d19_title"), false) +
+      '<div class="sk" style="height:120px; border-radius:24px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const res = await apiFetch("api/v1/habits");
+      state.habitsList = res.habits || [];
+      state.habitsLimit = res.active_limit || 3;
+
+      const quotaChip = t("miniapp.habits.d19_quota", {
+        used: res.active_count || 0,
+        limit: state.habitsLimit,
+      });
+
+      const listHtml = state.habitsList.length
+        ? '<div class="list">' +
+          state.habitsList
+            .map(function (h) {
+              return (
+                '<button type="button" class="li" data-open-habit="' +
+                escapeHtml(h.id) +
+                '" style="width:100%; background:none; border:0; border-top:1px solid var(--ln); text-align:left; cursor:pointer; font-family:inherit;">' +
+                '<div class="col grow" style="gap:2px;">' +
+                '<div class="b">' +
+                escapeHtml(h.title) +
+                "</div>" +
+                '<div class="sm mu">2m: ' +
+                escapeHtml(h.minimum_version) +
+                "</div>" +
+                "</div>" +
+                '<span class="stk">' +
+                h.current_streak +
+                "</span>" +
+                "</button>"
+              );
+            })
+            .join("") +
+          "</div>"
+        : '<div class="card col" style="text-align:center; padding:26px 18px;"><p class="mu">' +
+          escapeHtml(t("miniapp.habits.d19_empty")) +
+          "</p></div>";
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.habits.d19_title"), false) +
+        '<div class="row sp">' +
+        '<span class="chip">' +
+        escapeHtml(quotaChip) +
+        "</span>" +
+        '<button type="button" class="btn bsm" id="d19-new-habit-btn">' +
+        escapeHtml(t("miniapp.habits.d19_add_btn")) +
+        "</button>" +
+        "</div>" +
+        listHtml;
+
+      bindLanguageButtons(vp);
+
+      const newBtn = document.getElementById("d19-new-habit-btn");
+      if (newBtn) {
+        newBtn.addEventListener("click", function () {
+          openHabitWizardD20(null);
+        });
+      }
+
+      vp.querySelectorAll("[data-open-habit]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          state.activeHabitId = el.getAttribute("data-open-habit");
+          navigateTo("D21");
+        });
+      });
+    } catch (_e) {}
+  }
+
+  function openHabitWizardD20(existingHabit) {
+    state.habitDraft = existingHabit
+      ? {
+          id: existingHabit.id,
+          habit_kind: existingHabit.habit_kind || "build",
+          title: existingHabit.title,
+          signal: existingHabit.signal,
+          action: existingHabit.action,
+          minimum_version: existingHabit.minimum_version,
+          environment_prep: existingHabit.environment_prep || "",
+        }
+      : {
+          id: null,
+          habit_kind: "build",
+          title: "",
+          signal: "",
+          action: "",
+          minimum_version: "",
+          environment_prep: "",
+        };
+    navigateTo("D20");
+  }
+
+  function renderD20(vp) {
+    const draft = state.habitDraft;
+    if (!draft) {
+      handleHierarchicalBack();
+      return;
+    }
+    const isEdit = Boolean(draft.id);
+    const titleStr = isEdit ? t("miniapp.habits.d20_edit_title") : t("miniapp.habits.d20_create_title");
+
+    vp.innerHTML =
+      renderTopBar(titleStr, true) +
+      '<section class="card col" style="gap:12px;">' +
+      '<div class="seg">' +
+      '<button type="button" class="' +
+      (draft.habit_kind === "build" ? "on" : "") +
+      '" data-h-kind="build">' +
+      escapeHtml(t("miniapp.habits.d20_kind_build")) +
+      "</button>" +
+      '<button type="button" class="' +
+      (draft.habit_kind === "replace" ? "on" : "") +
+      '" data-h-kind="replace">' +
+      escapeHtml(t("miniapp.habits.d20_kind_replace")) +
+      "</button>" +
+      "</div>" +
+      '<button type="button" class="btn b2 bsm" id="d20-open-d23-btn">' +
+      escapeHtml(t("miniapp.habits.d20_ai_draft_btn")) +
+      "</button>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d20-title">' +
+      escapeHtml(t("miniapp.habits.d20_title_label")) +
+      "</label>" +
+      '<input id="d20-title" class="inp" type="text" value="' +
+      escapeHtml(draft.title) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d20-signal">' +
+      escapeHtml(t("miniapp.habits.d20_signal_label")) +
+      "</label>" +
+      '<input id="d20-signal" class="inp" type="text" value="' +
+      escapeHtml(draft.signal) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d20-action">' +
+      escapeHtml(t("miniapp.habits.d20_action_label")) +
+      "</label>" +
+      '<input id="d20-action" class="inp" type="text" value="' +
+      escapeHtml(draft.action) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d20-min">' +
+      escapeHtml(t("miniapp.habits.d20_min_label")) +
+      "</label>" +
+      '<input id="d20-min" class="inp" type="text" value="' +
+      escapeHtml(draft.minimum_version) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d20-env">' +
+      escapeHtml(t("miniapp.habits.d20_env_label")) +
+      "</label>" +
+      '<textarea id="d20-env" class="inp ta">' +
+      escapeHtml(draft.environment_prep) +
+      "</textarea>" +
+      "</div>" +
+      '<button type="button" class="btn" id="d20-save-btn">' +
+      escapeHtml(t("miniapp.common.save")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    function syncHabitInputs() {
+      const ti = document.getElementById("d20-title");
+      const si = document.getElementById("d20-signal");
+      const ac = document.getElementById("d20-action");
+      const mi = document.getElementById("d20-min");
+      const en = document.getElementById("d20-env");
+      if (ti) draft.title = ti.value;
+      if (si) draft.signal = si.value;
+      if (ac) draft.action = ac.value;
+      if (mi) draft.minimum_version = mi.value;
+      if (en) draft.environment_prep = en.value;
+    }
+
+    vp.querySelectorAll("[data-h-kind]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        syncHabitInputs();
+        draft.habit_kind = btn.getAttribute("data-h-kind");
+        renderCurrentScreen();
+      });
+    });
+
+    const d23Btn = document.getElementById("d20-open-d23-btn");
+    if (d23Btn) {
+      d23Btn.addEventListener("click", function () {
+        syncHabitInputs();
+        openHabitAiSheetD23();
+      });
+    }
+
+    const saveBtn = document.getElementById("d20-save-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", async function () {
+        syncHabitInputs();
+        if (!draft.title.trim() || !draft.signal.trim() || !draft.action.trim() || !draft.minimum_version.trim()) return;
+        triggerHaptic("notification", "success");
+        try {
+          if (isEdit) {
+            const res = await apiFetch("api/v1/habits/" + encodeURIComponent(draft.id), {
+              method: "PATCH",
+              body: draft,
+            });
+            state.activeHabitId = res.habit.id;
+          } else {
+            const res = await apiFetch("api/v1/habits", {
+              method: "POST",
+              body: draft,
+            });
+            state.activeHabitId = res.habit.id;
+          }
+          state.habitDraft = null;
+          navigateTo("D21", { pushHistory: false });
+        } catch (_e) {}
+      });
+    }
+  }
+
+  function openHabitAiSheetD23() {
+    openBottomSheet({
+      size: "medium",
+      title: t("miniapp.habits.d23_sheet_title"),
+      bodyHtml:
+        '<div class="col" style="gap:10px;">' +
+        '<textarea id="d23-goal-inp" class="inp ta" placeholder="' +
+        escapeHtml(t("miniapp.habits.d23_prompt_placeholder")) +
+        '"></textarea>' +
+        '<button type="button" class="btn" id="d23-gen-btn">' +
+        escapeHtml(t("miniapp.habits.d23_apply_btn")) +
+        "</button>" +
+        "</div>",
+    });
+
+    const genBtn = document.getElementById("d23-gen-btn");
+    if (genBtn) {
+      genBtn.addEventListener("click", async function () {
+        const inp = document.getElementById("d23-goal-inp");
+        const goal = inp ? inp.value.trim() : "";
+        if (goal.length < 3) return;
+        try {
+          const res = await apiFetch("api/v1/habits/ai-draft", {
+            method: "POST",
+            body: {
+              goal_description: goal,
+              habit_kind: (state.habitDraft && state.habitDraft.habit_kind) || "build",
+            },
+          });
+          if (res.draft && state.habitDraft) {
+            state.habitDraft.title = res.draft.title;
+            state.habitDraft.signal = res.draft.signal;
+            state.habitDraft.action = res.draft.action;
+            state.habitDraft.minimum_version = res.draft.minimum_version;
+            state.habitDraft.environment_prep = res.draft.environment_prep;
+          }
+          closeBottomSheet();
+          renderCurrentScreen();
+        } catch (_e) {}
+      });
+    }
+  }
+
+  async function renderD21(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.habits.d21_title"), true) + '<div class="sk" style="height:140px;"></div>';
+    bindLanguageButtons(vp);
+    if (!state.activeHabitId) return;
+
+    try {
+      const res = await apiFetch("api/v1/habits/" + encodeURIComponent(state.activeHabitId));
+      const h = res.habit;
+      state.activeHabitDetail = h;
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.habits.d21_title"), true) +
+        '<section class="card col" style="gap:12px;">' +
+        '<div class="row sp">' +
+        '<span class="stk">' +
+        escapeHtml(t("miniapp.habits.d21_streak_label", { cur: h.current_streak, best: h.best_streak })) +
+        "</span>" +
+        '<button type="button" class="btn b2 bsm" id="d21-edit-btn">' +
+        escapeHtml(t("miniapp.common.edit")) +
+        "</button>" +
+        "</div>" +
+        '<h1 class="h2">' +
+        escapeHtml(h.title) +
+        "</h1>" +
+        '<div class="bn col" style="gap:4px;">' +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.habits.d20_signal_label")) +
+        "</div><div>" +
+        escapeHtml(h.signal) +
+        "</div></div>" +
+        '<div class="bn ok col" style="gap:4px;">' +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.habits.d20_min_label")) +
+        "</div><div>" +
+        escapeHtml(h.minimum_version) +
+        "</div></div>" +
+        '<button type="button" class="btn" id="d21-mark-btn">' +
+        escapeHtml(t("miniapp.habits.d21_mark_today_btn")) +
+        "</button>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const editBtn = document.getElementById("d21-edit-btn");
+      if (editBtn) {
+        editBtn.addEventListener("click", function () {
+          openHabitWizardD20(h);
+        });
+      }
+
+      const markBtn = document.getElementById("d21-mark-btn");
+      if (markBtn) {
+        markBtn.addEventListener("click", function () {
+          openHabitMarkSheetD22(h);
+        });
+      }
+    } catch (_e) {}
+  }
+
+  function openHabitMarkSheetD22(habit) {
+    openBottomSheet({
+      size: "medium",
+      title: habit.title,
+      bodyHtml:
+        '<div class="col" style="gap:10px;">' +
+        '<button type="button" class="btn" data-h-outcome="full_done">' +
+        escapeHtml(t("miniapp.habits.d22_full_done")) +
+        "</button>" +
+        '<button type="button" class="btn b2" data-h-outcome="minimum_done">' +
+        escapeHtml(t("miniapp.habits.d22_min_done")) +
+        "</button>" +
+        '<button type="button" class="btn b2" data-h-outcome="no_opportunity">' +
+        escapeHtml(t("miniapp.habits.d22_no_opp")) +
+        "</button>" +
+        '<button type="button" class="btn bd" data-h-outcome="skipped">' +
+        escapeHtml(t("miniapp.habits.d22_skipped")) +
+        "</button>" +
+        "</div>",
+    });
+
+    const bodyEl = document.getElementById("sheet-body");
+    if (bodyEl) {
+      bodyEl.querySelectorAll("[data-h-outcome]").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          const outcome = btn.getAttribute("data-h-outcome");
+          triggerHaptic("notification", outcome === "skipped" ? "warning" : "success");
+          try {
+            await apiFetch("api/v1/habits/" + encodeURIComponent(habit.id) + "/checkin", {
+              method: "POST",
+              body: { outcome: outcome },
+            });
+            closeBottomSheet();
+            renderCurrentScreen();
+          } catch (_e) {}
+        });
+      });
+    }
+  }
+
+  // ==================== D36–D39: Streaks, Achievements, Celebration & Freeze Protection ====================
+  function openCelebrationSheetD38(cel) {
+    openBottomSheet({
+      size: "small",
+      title: t("miniapp.habits.d38_title", { days: cel.highest_threshold || 1 }),
+      bodyHtml:
+        '<div class="col" style="gap:12px; text-align:center;">' +
+        (cel.free_freeze_granted
+          ? '<div class="bn ok b">' + escapeHtml(t("miniapp.habits.d38_freeze_bonus")) + "</div>"
+          : "") +
+        '<button type="button" class="btn" id="d38-ack-btn">' +
+        escapeHtml(t("miniapp.common.continue")) +
+        "</button>" +
+        "</div>",
+    });
+    const ackBtn = document.getElementById("d38-ack-btn");
+    if (ackBtn) {
+      ackBtn.addEventListener("click", async function () {
+        await apiFetch("api/v1/celebrations/" + encodeURIComponent(cel.id) + "/ack", { method: "POST" }).catch(
+          function () {}
+        );
+        closeBottomSheet();
+      });
+    }
+  }
+
+  async function renderD36(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.habits.d36_title"), true) + '<div class="sk" style="height:140px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const st = await apiFetch("api/v1/streaks");
+      state.streaksData = st;
+      const badgesHtml = (st.badges || [])
+        .map(function (b) {
+          return (
+            '<span class="chip ' +
+            (b.unlocked ? "c-em" : "") +
+            '">' +
+            (b.unlocked ? "🔥 " : "🔒 ") +
+            b.threshold +
+            "d</span>"
+          );
+        })
+        .join("");
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.habits.d36_title"), true) +
+        '<section class="streak">' +
+        '<div class="stk-top">' +
+        '<span class="stk-n">' +
+        st.current_streak +
+        "</span>" +
+        '<div class="stk-u">' +
+        escapeHtml(t("miniapp.habits.d36_best_streak", { best: st.best_streak })) +
+        "<span>" +
+        escapeHtml(t("miniapp.habits.d36_earned_total", { total: st.earned_total })) +
+        "</span></div>" +
+        "</div>" +
+        '<button type="button" class="btn b2" id="d36-open-d39-btn">' +
+        escapeHtml(t("miniapp.habits.d36_open_freeze_btn")) +
+        "</button>" +
+        "</section>" +
+        '<section class="card col" style="gap:10px;">' +
+        '<h2 class="h3">' +
+        escapeHtml(t("miniapp.habits.d36_badges_title")) +
+        "</h2>" +
+        '<div class="rw">' +
+        badgesHtml +
+        "</div>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const d39Btn = document.getElementById("d36-open-d39-btn");
+      if (d39Btn) {
+        d39Btn.addEventListener("click", function () {
+          navigateTo("D39");
+        });
+      }
+    } catch (_e) {}
+  }
+
+  async function renderD39(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.habits.d39_title"), true) + '<div class="sk" style="height:140px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const st = await apiFetch("api/v1/streaks");
+      const fr = st.freeze;
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.habits.d39_title"), true) +
+        '<section class="card col" style="gap:12px;">' +
+        '<h1 class="h2">❄️ ' +
+        escapeHtml(t("miniapp.habits.d39_title")) +
+        "</h1>" +
+        '<div class="bn ok b">' +
+        escapeHtml(t("miniapp.habits.d39_stock_label", { stock: fr.stock, max: fr.max_stock })) +
+        "</div>" +
+        '<div class="sm mu">' +
+        escapeHtml(t("miniapp.habits.d39_next_free", { days: st.days_until_next_free_freeze })) +
+        "</div>" +
+        '<div class="sm mu">' +
+        escapeHtml(t("miniapp.habits.d39_rolling_cap", { used: fr.protected_30d_used, cap: fr.protected_30d_cap })) +
+        "</div>" +
+        '<button type="button" class="opt ' +
+        (fr.auto_enabled ? "on" : "") +
+        '" id="d39-toggle-auto">' +
+        '<span class="cbx ' +
+        (fr.auto_enabled ? "on" : "") +
+        '">✓</span>' +
+        '<span class="grow">' +
+        escapeHtml(t("miniapp.habits.d39_auto_label")) +
+        "</span>" +
+        "</button>" +
+        '<div class="col" style="gap:8px; margin-top:6px;">' +
+        (fr.stock > 0
+          ? '<button type="button" class="btn" id="d39-apply-btn">' +
+            escapeHtml(t("miniapp.habits.d39_apply_today_btn")) +
+            "</button>"
+          : "") +
+        '<button type="button" class="btn b2" id="d39-buy-day-btn">' +
+        escapeHtml(t("miniapp.habits.d39_buy_day_btn", { price: fr.price_day_xtr })) +
+        "</button>" +
+        '<button type="button" class="btn b2" id="d39-buy-week-btn">' +
+        escapeHtml(t("miniapp.habits.d39_buy_week_btn", { price: fr.price_week_xtr })) +
+        "</button>" +
+        "</div>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const autoBtn = document.getElementById("d39-toggle-auto");
+      if (autoBtn) {
+        autoBtn.addEventListener("click", async function () {
+          await apiFetch("api/v1/streaks/freeze-settings", {
+            method: "PATCH",
+            body: { freeze_auto_enabled: !fr.auto_enabled },
+          });
+          renderCurrentScreen();
+        });
+      }
+
+      const applyBtn = document.getElementById("d39-apply-btn");
+      if (applyBtn) {
+        applyBtn.addEventListener("click", async function () {
+          triggerHaptic("notification", "success");
+          await apiFetch("api/v1/streaks/freeze-apply", { method: "POST", body: {} });
+          renderCurrentScreen();
+        });
+      }
+
+      const buyDayBtn = document.getElementById("d39-buy-day-btn");
+      if (buyDayBtn) {
+        buyDayBtn.addEventListener("click", async function () {
+          const res = await apiFetch("api/v1/streaks/freeze-purchase", {
+            method: "POST",
+            body: { kind: "freeze_day" },
+          });
+          if (res.invoice_link && tg && typeof tg.openInvoice === "function") {
+            tg.openInvoice(res.invoice_link, function () {
+              renderCurrentScreen();
+            });
+          }
+        });
+      }
+
+      const buyWeekBtn = document.getElementById("d39-buy-week-btn");
+      if (buyWeekBtn) {
+        buyWeekBtn.addEventListener("click", async function () {
+          const res = await apiFetch("api/v1/streaks/freeze-purchase", {
+            method: "POST",
+            body: { kind: "freeze_week" },
+          });
+          if (res.invoice_link && tg && typeof tg.openInvoice === "function") {
+            tg.openInvoice(res.invoice_link, function () {
+              renderCurrentScreen();
+            });
+          }
+        });
+      }
+    } catch (_e) {}
   }
 
   // ==================== D42: "Why This Exercise?" Science Bottom Sheet ====================

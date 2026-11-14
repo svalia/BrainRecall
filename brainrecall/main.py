@@ -25,6 +25,7 @@ from brainrecall.i18n import (
     resolve_user_locale,
     verify_catalog_parity,
 )
+from brainrecall.habits_streaks_routes import router as habits_streaks_router
 from brainrecall.knowledge_routes import router as knowledge_router
 from brainrecall.study_routes import router as study_router
 from brainrecall.models import (
@@ -76,6 +77,7 @@ app.add_middleware(
 
 app.include_router(knowledge_router)
 app.include_router(study_router)
+app.include_router(habits_streaks_router)
 
 
 class BootstrapRequest(BaseModel):
