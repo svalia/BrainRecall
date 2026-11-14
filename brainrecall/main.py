@@ -25,6 +25,7 @@ from brainrecall.i18n import (
     resolve_user_locale,
     verify_catalog_parity,
 )
+from brainrecall.knowledge_routes import router as knowledge_router
 from brainrecall.models import (
     Entitlement,
     Habit,
@@ -71,6 +72,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(knowledge_router)
 
 
 class BootstrapRequest(BaseModel):
@@ -500,6 +503,8 @@ async def update_my_method_intro(
         row.intro_shown_at = row.intro_shown_at or now
         if payload.status == "dismissed":
             row.dismissed_at = now
+            row.acknowledged_content_version = None
+            row.acknowledged_at = None
         elif payload.status == "acknowledged":
             row.acknowledged_content_version = current_version
             row.acknowledged_at = now

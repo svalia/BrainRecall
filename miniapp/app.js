@@ -29,6 +29,20 @@
       reminder_window: "evening",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Moscow",
     },
+    topicsList: [],
+    topicsLimit: 3,
+    activeTopicId: null,
+    activeTopicDetail: null,
+    activeTopicTab: "items",
+    activeItemId: null,
+    activeItemDetail: null,
+    activeGroupId: null,
+    activeGroupDetail: null,
+    searchQuery: "",
+    searchResults: null,
+    itemDraft: null,
+    groupDraft: null,
+    returnToD41AfterItemCreate: false,
   };
 
   function t(key, params) {
@@ -280,6 +294,22 @@
       renderD02(vp);
     } else if (state.currentScreen === "D03") {
       renderD03(vp);
+    } else if (state.currentScreen === "D04") {
+      renderD04(vp);
+    } else if (state.currentScreen === "D05") {
+      renderD05(vp);
+    } else if (state.currentScreen === "D07") {
+      renderD07(vp);
+    } else if (state.currentScreen === "D08") {
+      renderD08(vp);
+    } else if (state.currentScreen === "D09") {
+      renderD09(vp);
+    } else if (state.currentScreen === "D09-Edit") {
+      renderD09Edit(vp);
+    } else if (state.currentScreen === "D40") {
+      renderD40(vp);
+    } else if (state.currentScreen === "D41") {
+      renderD41(vp);
     } else {
       renderD03(vp);
     }
@@ -806,6 +836,1214 @@
     if (openLanding) {
       openLanding.addEventListener("click", function () {
         navigateTo("D01");
+      });
+    }
+  }
+
+  // ==================== D04: Knowledge & Topics Hub ====================
+  async function renderD04(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.knowledge.title"), false) +
+      '<div class="row" style="gap:8px;">' +
+      '<button type="button" class="inp grow row" id="d04-search-trigger" style="text-align:left; cursor:pointer; color:var(--mu);">' +
+      escapeHtml(t("miniapp.knowledge.search_placeholder")) +
+      "</button>" +
+      '<button type="button" class="btn bsm" id="d04-add-btn">' +
+      escapeHtml(t("miniapp.knowledge.add_btn")) +
+      "</button>" +
+      "</div>" +
+      '<div id="d04-topics-container" class="col" style="gap:12px;">' +
+      '<div class="sk" style="height:68px; border-radius:20px;"></div>' +
+      "</div>";
+
+    bindLanguageButtons(vp);
+
+    const searchTrig = document.getElementById("d04-search-trigger");
+    if (searchTrig) {
+      searchTrig.addEventListener("click", function () {
+        state.searchQuery = "";
+        state.searchResults = null;
+        navigateTo("D05");
+      });
+    }
+
+    const addBtn = document.getElementById("d04-add-btn");
+    if (addBtn) {
+      addBtn.addEventListener("click", function () {
+        openAddSheetD06(null);
+      });
+    }
+
+    try {
+      const data = await apiFetch("api/v1/topics");
+      state.topicsList = data.topics || [];
+      state.topicsLimit = data.active_limit || 3;
+      const box = document.getElementById("d04-topics-container");
+      if (!box) return;
+
+      const quotaText = t("miniapp.knowledge.active_topics_quota", {
+        used: data.active_count || 0,
+        limit: state.topicsLimit,
+      });
+
+      if (state.topicsList.length === 0) {
+        box.innerHTML =
+          '<div class="chip">' +
+          escapeHtml(quotaText) +
+          "</div>" +
+          '<div class="card col" style="text-align:center; padding:26px 18px;">' +
+          '<p class="mu">' +
+          escapeHtml(t("miniapp.knowledge.empty_topics")) +
+          "</p>" +
+          '<button type="button" class="btn" id="d04-create-first-topic">' +
+          escapeHtml(t("miniapp.knowledge.add_topic_opt")) +
+          "</button>" +
+          "</div>";
+        const firstBtn = document.getElementById("d04-create-first-topic");
+        if (firstBtn) {
+          firstBtn.addEventListener("click", function () {
+            openTopicFormD07(null);
+          });
+        }
+        return;
+      }
+
+      const listHtml = state.topicsList
+        .map(function (tp) {
+          return (
+            '<button type="button" class="card col" data-open-topic="' +
+            escapeHtml(tp.id) +
+            '" style="text-align:left; cursor:pointer; width:100%; font-family:inherit;">' +
+            '<div class="row sp">' +
+            '<span class="h3">' +
+            escapeHtml(tp.title) +
+            "</span>" +
+            '<span class="chip">' +
+            escapeHtml(tp.status) +
+            "</span>" +
+            "</div>" +
+            '<div class="rw sm mu">' +
+            "<span>" +
+            escapeHtml(t("miniapp.knowledge.tab_items") + ": " + tp.items_count) +
+            "</span>" +
+            "<span>·</span>" +
+            "<span>" +
+            escapeHtml(t("miniapp.knowledge.tab_groups") + ": " + tp.groups_count) +
+            "</span>" +
+            "</div>" +
+            "</button>"
+          );
+        })
+        .join("");
+
+      box.innerHTML = '<div class="chip">' + escapeHtml(quotaText) + "</div>" + listHtml;
+      box.querySelectorAll("[data-open-topic]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          state.activeTopicId = el.getAttribute("data-open-topic");
+          state.activeTopicTab = "items";
+          navigateTo("D08");
+        });
+      });
+    } catch (_e) {}
+  }
+
+  // ==================== D05: Search Screen ====================
+  function renderD05(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.knowledge.title"), true) +
+      '<div class="row" style="gap:8px;">' +
+      '<input id="d05-search-input" class="inp grow" type="search" placeholder="' +
+      escapeHtml(t("miniapp.knowledge.search_placeholder")) +
+      '" value="' +
+      escapeHtml(state.searchQuery) +
+      '" />' +
+      "</div>" +
+      '<div id="d05-results-box" class="col" style="gap:10px;"></div>';
+
+    bindLanguageButtons(vp);
+    const inp = document.getElementById("d05-search-input");
+    if (inp) {
+      inp.focus();
+      inp.addEventListener("input", async function () {
+        state.searchQuery = inp.value;
+        await runSearchD05();
+      });
+    }
+    runSearchD05();
+  }
+
+  async function runSearchD05() {
+    const box = document.getElementById("d05-results-box");
+    if (!box) return;
+    try {
+      const res = await apiFetch("api/v1/search?q=" + encodeURIComponent(state.searchQuery || ""));
+      const itemsHtml = (res.items || [])
+        .map(function (it) {
+          return (
+            '<button type="button" class="li" data-search-item="' +
+            escapeHtml(it.id) +
+            '" style="width:100%; background:none; border:0; border-top:1px solid var(--ln); text-align:left; cursor:pointer; font-family:inherit;">' +
+            '<div class="col grow" style="gap:2px;">' +
+            '<div class="b">' +
+            escapeHtml(it.prompt) +
+            "</div>" +
+            '<div class="sm mu">' +
+            escapeHtml(it.answer) +
+            "</div>" +
+            "</div>" +
+            '<span class="chip">' +
+            escapeHtml(it.item_type) +
+            "</span>" +
+            "</button>"
+          );
+        })
+        .join("");
+
+      const groupsHtml = (res.groups || [])
+        .map(function (g) {
+          return (
+            '<button type="button" class="li" data-search-group="' +
+            escapeHtml(g.id) +
+            '" style="width:100%; background:none; border:0; border-top:1px solid var(--ln); text-align:left; cursor:pointer; font-family:inherit;">' +
+            '<div class="col grow" style="gap:2px;">' +
+            '<div class="b">🕸 ' +
+            escapeHtml(g.title) +
+            "</div>" +
+            '<div class="sm mu">' +
+            escapeHtml(g.principle) +
+            "</div>" +
+            "</div>" +
+            "</button>"
+          );
+        })
+        .join("");
+
+      box.innerHTML =
+        (groupsHtml ? '<div class="list">' + groupsHtml + "</div>" : "") +
+        (itemsHtml ? '<div class="list">' + itemsHtml + "</div>" : "");
+
+      box.querySelectorAll("[data-search-item]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          state.activeItemId = el.getAttribute("data-search-item");
+          navigateTo("D09");
+        });
+      });
+      box.querySelectorAll("[data-search-group]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          state.activeGroupId = el.getAttribute("data-search-group");
+          navigateTo("D40");
+        });
+      });
+    } catch (_e) {}
+  }
+
+  // ==================== D06: Add Action Bottom Sheet ====================
+  function openAddSheetD06(topicId) {
+    openBottomSheet({
+      size: "small",
+      title: t("miniapp.knowledge.add_sheet_title"),
+      bodyHtml:
+        '<div class="col" style="gap:10px;">' +
+        '<button type="button" class="opt" id="d06-opt-topic"><span class="grow b">' +
+        escapeHtml(t("miniapp.knowledge.add_topic_opt")) +
+        "</span></button>" +
+        (topicId
+          ? '<button type="button" class="opt" id="d06-opt-item"><span class="grow b">' +
+            escapeHtml(t("miniapp.knowledge.add_item_opt")) +
+            "</span></button>" +
+            '<button type="button" class="opt" id="d06-opt-group"><span class="grow b">' +
+            escapeHtml(t("miniapp.knowledge.add_group_opt")) +
+            "</span></button>"
+          : "") +
+        "</div>",
+    });
+
+    const optTopic = document.getElementById("d06-opt-topic");
+    if (optTopic) {
+      optTopic.addEventListener("click", function () {
+        closeBottomSheet();
+        openTopicFormD07(null);
+      });
+    }
+    const optItem = document.getElementById("d06-opt-item");
+    if (optItem) {
+      optItem.addEventListener("click", function () {
+        closeBottomSheet();
+        openItemEditorD09Edit(topicId, null, false);
+      });
+    }
+    const optGroup = document.getElementById("d06-opt-group");
+    if (optGroup) {
+      optGroup.addEventListener("click", function () {
+        closeBottomSheet();
+        openGroupEditorD41(topicId, null);
+      });
+    }
+  }
+
+  // ==================== D07: Create / Edit Topic ====================
+  function openTopicFormD07(existingTopic) {
+    state.topicDraft = existingTopic
+      ? {
+          id: existingTopic.id,
+          title: existingTopic.title,
+          goal: existingTopic.goal,
+          goal_note: existingTopic.goal_note || "",
+          revision: existingTopic.revision,
+        }
+      : { id: null, title: "", goal: "free", goal_note: "" };
+    navigateTo("D07");
+  }
+
+  function renderD07(vp) {
+    const draft = state.topicDraft || { id: null, title: "", goal: "free", goal_note: "" };
+    const isEdit = Boolean(draft.id);
+    const titleStr = isEdit ? t("miniapp.knowledge.edit_topic_title") : t("miniapp.knowledge.create_topic_title");
+
+    vp.innerHTML =
+      renderTopBar(titleStr, true) +
+      '<section class="card col" style="gap:14px;">' +
+      '<h1 class="h2">' +
+      escapeHtml(titleStr) +
+      "</h1>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d07-title">' +
+      escapeHtml(t("miniapp.knowledge.topic_name_label")) +
+      "</label>" +
+      '<input id="d07-title" class="inp" type="text" placeholder="' +
+      escapeHtml(t("miniapp.knowledge.topic_name_placeholder")) +
+      '" value="' +
+      escapeHtml(draft.title) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab">' +
+      escapeHtml(t("miniapp.knowledge.topic_goal_label")) +
+      "</label>" +
+      renderGoalChip("exam", t("miniapp.knowledge.goal_exam"), draft.goal === "exam") +
+      renderGoalChip("work", t("miniapp.knowledge.goal_work"), draft.goal === "work") +
+      renderGoalChip("communication", t("miniapp.knowledge.goal_communication"), draft.goal === "communication") +
+      renderGoalChip("personal", t("miniapp.knowledge.goal_personal"), draft.goal === "personal") +
+      renderGoalChip("free", t("miniapp.knowledge.goal_free"), draft.goal === "free") +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d07-note">' +
+      escapeHtml(t("miniapp.knowledge.topic_note_label")) +
+      "</label>" +
+      '<textarea id="d07-note" class="inp ta">' +
+      escapeHtml(draft.goal_note) +
+      "</textarea>" +
+      "</div>" +
+      '<button type="button" class="btn" id="d07-save-btn">' +
+      escapeHtml(t("miniapp.common.save")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    const titleInp = document.getElementById("d07-title");
+    const noteInp = document.getElementById("d07-note");
+    if (titleInp) {
+      titleInp.addEventListener("input", function () {
+        draft.title = titleInp.value;
+      });
+    }
+    if (noteInp) {
+      noteInp.addEventListener("input", function () {
+        draft.goal_note = noteInp.value;
+      });
+    }
+
+    vp.querySelectorAll("[data-goal-opt]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        draft.goal = el.getAttribute("data-goal-opt");
+        renderCurrentScreen();
+      });
+    });
+
+    const saveBtn = document.getElementById("d07-save-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", async function () {
+        if (!draft.title.trim()) return;
+        triggerHaptic("notification", "success");
+        try {
+          if (isEdit) {
+            await apiFetch("api/v1/topics/" + encodeURIComponent(draft.id), {
+              method: "PATCH",
+              body: {
+                title: draft.title,
+                goal: draft.goal,
+                goal_note: draft.goal_note,
+                revision: draft.revision,
+              },
+            });
+            state.activeTopicId = draft.id;
+          } else {
+            const res = await apiFetch("api/v1/topics", {
+              method: "POST",
+              body: {
+                title: draft.title,
+                goal: draft.goal,
+                goal_note: draft.goal_note,
+              },
+            });
+            state.activeTopicId = res.topic.id;
+          }
+          state.topicDraft = null;
+          navigateTo("D08", { pushHistory: false });
+        } catch (_e) {}
+      });
+    }
+  }
+
+  function renderGoalChip(goalCode, label, active) {
+    return (
+      '<button type="button" class="opt ' +
+      (active ? "on" : "") +
+      '" data-goal-opt="' +
+      escapeHtml(goalCode) +
+      '">' +
+      '<span class="rad"></span><span class="grow">' +
+      escapeHtml(label) +
+      "</span></button>"
+    );
+  }
+
+  // ==================== D08: Topic Detail (Items / Meaning Groups M5 / Materials) ====================
+  async function renderD08(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.knowledge.title"), true) +
+      '<div class="sk" style="height:120px; border-radius:24px;"></div>';
+    bindLanguageButtons(vp);
+
+    if (!state.activeTopicId) {
+      navigateTo("D04", { pushHistory: false });
+      return;
+    }
+
+    try {
+      const detail = await apiFetch("api/v1/topics/" + encodeURIComponent(state.activeTopicId));
+      state.activeTopicDetail = detail;
+      const top = detail.topic;
+      const items = detail.items || [];
+      const groups = detail.groups || [];
+
+      let tabContentHtml = "";
+      if (state.activeTopicTab === "groups") {
+        tabContentHtml =
+          '<button type="button" class="btn b2" id="d08-new-group-btn">' +
+          escapeHtml(t("miniapp.knowledge.add_group_opt")) +
+          "</button>" +
+          (groups.length
+            ? '<div class="list">' +
+              groups
+                .map(function (g) {
+                  const statusChip =
+                    g.status === "needs_review"
+                      ? '<span class="chip c-wn">!</span>'
+                      : '<span class="chip">' + escapeHtml(g.members.length + "/7") + "</span>";
+                  return (
+                    '<button type="button" class="li" data-open-group="' +
+                    escapeHtml(g.id) +
+                    '" style="width:100%; background:none; border:0; border-top:1px solid var(--ln); text-align:left; cursor:pointer; font-family:inherit;">' +
+                    '<div class="col grow" style="gap:2px;">' +
+                    '<div class="b">🕸 ' +
+                    escapeHtml(g.title) +
+                    "</div>" +
+                    '<div class="sm mu">' +
+                    escapeHtml(g.principle) +
+                    "</div>" +
+                    "</div>" +
+                    statusChip +
+                    "</button>"
+                  );
+                })
+                .join("") +
+              "</div>"
+            : "");
+      } else {
+        tabContentHtml =
+          '<button type="button" class="btn b2" id="d08-new-item-btn">' +
+          escapeHtml(t("miniapp.knowledge.add_item_opt")) +
+          "</button>" +
+          (items.length
+            ? '<div class="list">' +
+              items
+                .map(function (it) {
+                  return (
+                    '<button type="button" class="li" data-open-item="' +
+                    escapeHtml(it.id) +
+                    '" style="width:100%; background:none; border:0; border-top:1px solid var(--ln); text-align:left; cursor:pointer; font-family:inherit;">' +
+                    '<div class="col grow" style="gap:2px;">' +
+                    '<div class="b">' +
+                    escapeHtml(it.prompt) +
+                    "</div>" +
+                    '<div class="sm mu">' +
+                    escapeHtml(it.answer) +
+                    "</div>" +
+                    "</div>" +
+                    '<span class="chip">' +
+                    escapeHtml(it.item_type) +
+                    "</span>" +
+                    "</button>"
+                  );
+                })
+                .join("") +
+              "</div>"
+            : "");
+      }
+
+      vp.innerHTML =
+        renderTopBar(top.title, true) +
+        '<section class="card col" style="gap:10px;">' +
+        '<div class="row sp">' +
+        '<h1 class="h2">' +
+        escapeHtml(top.title) +
+        "</h1>" +
+        '<div class="row" style="gap:6px;">' +
+        '<button type="button" class="btn b2 bsm" id="d08-edit-topic-btn">' +
+        escapeHtml(t("miniapp.common.edit")) +
+        "</button>" +
+        '<button type="button" class="btn bsm" id="d08-add-sheet-btn">+</button>' +
+        "</div>" +
+        "</div>" +
+        (top.goal_note ? '<p class="sm mu">' + escapeHtml(top.goal_note) + "</p>" : "") +
+        "</section>" +
+        '<div class="seg">' +
+        '<button type="button" class="' +
+        (state.activeTopicTab === "items" ? "on" : "") +
+        '" data-topic-tab="items">' +
+        escapeHtml(t("miniapp.knowledge.tab_items") + " (" + items.length + ")") +
+        "</button>" +
+        '<button type="button" class="' +
+        (state.activeTopicTab === "groups" ? "on" : "") +
+        '" data-topic-tab="groups">' +
+        escapeHtml(t("miniapp.knowledge.tab_groups") + " (" + groups.length + ")") +
+        "</button>" +
+        "</div>" +
+        tabContentHtml;
+
+      bindLanguageButtons(vp);
+
+      vp.querySelectorAll("[data-topic-tab]").forEach(function (tabBtn) {
+        tabBtn.addEventListener("click", function () {
+          state.activeTopicTab = tabBtn.getAttribute("data-topic-tab");
+          renderCurrentScreen();
+        });
+      });
+
+      const editTopicBtn = document.getElementById("d08-edit-topic-btn");
+      if (editTopicBtn) {
+        editTopicBtn.addEventListener("click", function () {
+          openTopicFormD07(top);
+        });
+      }
+
+      const addSheetBtn = document.getElementById("d08-add-sheet-btn");
+      if (addSheetBtn) {
+        addSheetBtn.addEventListener("click", function () {
+          openAddSheetD06(top.id);
+        });
+      }
+
+      const newItemBtn = document.getElementById("d08-new-item-btn");
+      if (newItemBtn) {
+        newItemBtn.addEventListener("click", function () {
+          openItemEditorD09Edit(top.id, null, false);
+        });
+      }
+
+      const newGroupBtn = document.getElementById("d08-new-group-btn");
+      if (newGroupBtn) {
+        newGroupBtn.addEventListener("click", function () {
+          openGroupEditorD41(top.id, null);
+        });
+      }
+
+      vp.querySelectorAll("[data-open-item]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          state.activeItemId = el.getAttribute("data-open-item");
+          navigateTo("D09");
+        });
+      });
+
+      vp.querySelectorAll("[data-open-group]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          state.activeGroupId = el.getAttribute("data-open-group");
+          navigateTo("D40");
+        });
+      });
+    } catch (_e) {}
+  }
+
+  // ==================== D09 & D09-Edit & D34: Knowledge Item View, Editor & Source Excerpt Sheet ====================
+  async function renderD09(vp) {
+    vp.innerHTML = renderTopBar("", true) + '<div class="sk" style="height:140px;"></div>';
+    bindLanguageButtons(vp);
+    if (!state.activeItemId) return;
+
+    try {
+      const res = await apiFetch("api/v1/items/" + encodeURIComponent(state.activeItemId));
+      state.activeItemDetail = res;
+      const item = res.item;
+      const frag = item.source_fragment;
+
+      const rubricHtml = (item.rubric_criteria || [])
+        .map(function (c) {
+          return '<div class="sm">• ' + escapeHtml(c) + "</div>";
+        })
+        .join("");
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.knowledge.tab_items"), true) +
+        '<section class="card col" style="gap:12px;">' +
+        '<div class="row sp">' +
+        '<span class="chip c-pr">' +
+        escapeHtml(item.item_type) +
+        "</span>" +
+        '<button type="button" class="btn b2 bsm" id="d09-edit-btn">' +
+        escapeHtml(t("miniapp.common.edit")) +
+        "</button>" +
+        "</div>" +
+        '<h1 class="h2">' +
+        escapeHtml(item.prompt) +
+        "</h1>" +
+        '<div class="dv"></div>' +
+        "<div>" +
+        escapeHtml(item.answer) +
+        "</div>" +
+        (item.applicability
+          ? '<div class="bn in col" style="gap:4px;"><div class="eyebrow">' +
+            escapeHtml(t("miniapp.knowledge.item_applicability_label")) +
+            "</div><div>" +
+            escapeHtml(item.applicability) +
+            "</div></div>"
+          : "") +
+        (item.formula_expression ? '<div class="math">' + escapeHtml(item.formula_expression) + "</div>" : "") +
+        (rubricHtml
+          ? '<div class="col" style="gap:4px;"><div class="eyebrow">' +
+            escapeHtml(t("miniapp.knowledge.item_rubric_label")) +
+            "</div>" +
+            rubricHtml +
+            "</div>"
+          : "") +
+        (frag
+          ? '<button type="button" class="btn b3" id="d09-open-d34-btn">' +
+            escapeHtml(t("miniapp.common.source_fragment") + " (" + frag.anchor_label + ")") +
+            "</button>"
+          : "") +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const editBtn = document.getElementById("d09-edit-btn");
+      if (editBtn) {
+        editBtn.addEventListener("click", function () {
+          openItemEditorD09Edit(item.topic_id, item, false);
+        });
+      }
+
+      const d34Btn = document.getElementById("d09-open-d34-btn");
+      if (d34Btn && frag) {
+        d34Btn.addEventListener("click", function () {
+          openSourceFragmentSheetD34(frag);
+        });
+      }
+    } catch (_e) {}
+  }
+
+  function openSourceFragmentSheetD34(frag) {
+    openBottomSheet({
+      size: "medium",
+      title: t("miniapp.knowledge.d34_title"),
+      bodyHtml:
+        '<div class="col" style="gap:10px;">' +
+        (frag.source_deleted
+          ? '<div class="bn wn">' + escapeHtml(t("miniapp.knowledge.d34_deleted_banner")) + "</div>"
+          : "") +
+        '<div class="eyebrow">' +
+        escapeHtml((frag.material_title_snapshot || "") + " · " + (frag.anchor_label || "")) +
+        "</div>" +
+        '<blockquote class="src">' +
+        escapeHtml(frag.quote_text) +
+        "</blockquote>" +
+        "</div>",
+    });
+  }
+
+  function openItemEditorD09Edit(topicId, existingItem, returnToD41) {
+    state.returnToD41AfterItemCreate = Boolean(returnToD41);
+    state.itemDraft = existingItem
+      ? {
+          id: existingItem.id,
+          topic_id: existingItem.topic_id,
+          item_type: existingItem.item_type,
+          prompt: existingItem.prompt,
+          answer: existingItem.answer,
+          applicability: existingItem.applicability || "",
+          formula_expression: existingItem.formula_expression || "",
+          rubric_lines: (existingItem.rubric_criteria || []).join("\n"),
+          quote_text: existingItem.source_fragment ? existingItem.source_fragment.quote_text : "",
+          anchor_label: existingItem.source_fragment ? existingItem.source_fragment.anchor_label : "",
+          revision: existingItem.revision,
+        }
+      : {
+          id: null,
+          topic_id: topicId,
+          item_type: "concept",
+          prompt: "",
+          answer: "",
+          applicability: "",
+          formula_expression: "",
+          rubric_lines: "",
+          quote_text: "",
+          anchor_label: "",
+        };
+    navigateTo("D09-Edit");
+  }
+
+  function renderD09Edit(vp) {
+    const draft = state.itemDraft;
+    if (!draft) {
+      handleHierarchicalBack();
+      return;
+    }
+    const isEdit = Boolean(draft.id);
+    const titleStr = isEdit ? t("miniapp.knowledge.item_edit_title") : t("miniapp.knowledge.item_create_title");
+
+    const types = ["fact", "concept", "word", "formula", "procedure", "opinion", "hypothesis"];
+    const typeChips = types
+      .map(function (tp) {
+        return (
+          '<button type="button" class="chip ' +
+          (draft.item_type === tp ? "c-pr" : "") +
+          '" data-item-type="' +
+          tp +
+          '" style="cursor:pointer;">' +
+          escapeHtml(t("miniapp.knowledge.type_" + tp)) +
+          "</button>"
+        );
+      })
+      .join("");
+
+    vp.innerHTML =
+      renderTopBar(titleStr, true) +
+      '<section class="card col" style="gap:12px;">' +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab">' +
+      escapeHtml(t("miniapp.knowledge.item_type_label")) +
+      "</label>" +
+      '<div class="rw">' +
+      typeChips +
+      "</div>" +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d09-prompt">' +
+      escapeHtml(t("miniapp.knowledge.item_prompt_label")) +
+      "</label>" +
+      '<textarea id="d09-prompt" class="inp ta">' +
+      escapeHtml(draft.prompt) +
+      "</textarea>" +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d09-answer">' +
+      escapeHtml(t("miniapp.knowledge.item_answer_label")) +
+      "</label>" +
+      '<textarea id="d09-answer" class="inp ta">' +
+      escapeHtml(draft.answer) +
+      "</textarea>" +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d09-app">' +
+      escapeHtml(t("miniapp.knowledge.item_applicability_label")) +
+      "</label>" +
+      '<input id="d09-app" class="inp" type="text" value="' +
+      escapeHtml(draft.applicability) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d09-formula">' +
+      escapeHtml(t("miniapp.knowledge.item_formula_label")) +
+      "</label>" +
+      '<input id="d09-formula" class="inp" type="text" value="' +
+      escapeHtml(draft.formula_expression) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d09-rubric">' +
+      escapeHtml(t("miniapp.knowledge.item_rubric_label")) +
+      "</label>" +
+      '<textarea id="d09-rubric" class="inp ta">' +
+      escapeHtml(draft.rubric_lines) +
+      "</textarea>" +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d09-quote">' +
+      escapeHtml(t("miniapp.knowledge.item_quote_label")) +
+      "</label>" +
+      '<textarea id="d09-quote" class="inp ta">' +
+      escapeHtml(draft.quote_text) +
+      "</textarea>" +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d09-anchor">' +
+      escapeHtml(t("miniapp.knowledge.item_anchor_label")) +
+      "</label>" +
+      '<input id="d09-anchor" class="inp" type="text" value="' +
+      escapeHtml(draft.anchor_label) +
+      '" />' +
+      "</div>" +
+      '<button type="button" class="btn" id="d09-save-btn">' +
+      escapeHtml(t("miniapp.common.save")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    function syncFields() {
+      const pEl = document.getElementById("d09-prompt");
+      const aEl = document.getElementById("d09-answer");
+      const apEl = document.getElementById("d09-app");
+      const fEl = document.getElementById("d09-formula");
+      const rEl = document.getElementById("d09-rubric");
+      const qEl = document.getElementById("d09-quote");
+      const anEl = document.getElementById("d09-anchor");
+      if (pEl) draft.prompt = pEl.value;
+      if (aEl) draft.answer = aEl.value;
+      if (apEl) draft.applicability = apEl.value;
+      if (fEl) draft.formula_expression = fEl.value;
+      if (rEl) draft.rubric_lines = rEl.value;
+      if (qEl) draft.quote_text = qEl.value;
+      if (anEl) draft.anchor_label = anEl.value;
+    }
+
+    vp.querySelectorAll("[data-item-type]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        syncFields();
+        draft.item_type = btn.getAttribute("data-item-type");
+        renderCurrentScreen();
+      });
+    });
+
+    const saveBtn = document.getElementById("d09-save-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", async function () {
+        syncFields();
+        if (!draft.prompt.trim() || !draft.answer.trim()) return;
+        triggerHaptic("notification", "success");
+        const criteria = draft.rubric_lines
+          .split("\n")
+          .map(function (s) {
+            return s.trim();
+          })
+          .filter(Boolean);
+        const objs = ["recall"];
+        if (criteria.length > 0 || draft.item_type === "concept") objs.push("explain");
+        if (draft.formula_expression.trim()) objs.push("apply");
+
+        try {
+          if (isEdit) {
+            const res = await apiFetch("api/v1/items/" + encodeURIComponent(draft.id), {
+              method: "PATCH",
+              body: {
+                item_type: draft.item_type,
+                prompt: draft.prompt,
+                answer: draft.answer,
+                applicability: draft.applicability,
+                formula_expression: draft.formula_expression,
+                rubric_criteria: criteria,
+                applicable_objectives: objs,
+                quote_text: draft.quote_text,
+                anchor_label: draft.anchor_label,
+                revision: draft.revision,
+              },
+            });
+            state.activeItemId = res.item.id;
+            state.itemDraft = null;
+            navigateTo("D09", { pushHistory: false });
+          } else {
+            const res = await apiFetch("api/v1/items", {
+              method: "POST",
+              body: {
+                topic_id: draft.topic_id,
+                item_type: draft.item_type,
+                prompt: draft.prompt,
+                answer: draft.answer,
+                applicability: draft.applicability,
+                formula_expression: draft.formula_expression,
+                rubric_criteria: criteria,
+                applicable_objectives: objs,
+                quote_text: draft.quote_text,
+                anchor_label: draft.anchor_label,
+              },
+            });
+            const createdItem = res.item;
+            state.itemDraft = null;
+
+            // Preserve D41 draft when creating an item inline for a Meaning Group (Section 3.14 exception)
+            if (state.returnToD41AfterItemCreate && state.groupDraft) {
+              state.returnToD41AfterItemCreate = false;
+              state.groupDraft.availableItems.unshift(createdItem);
+              if (state.groupDraft.selectedIds.length < 7) {
+                state.groupDraft.selectedIds.push(createdItem.id);
+              }
+              navigateTo("D41", { pushHistory: false });
+            } else {
+              state.activeItemId = createdItem.id;
+              navigateTo("D09", { pushHistory: false });
+            }
+          }
+        } catch (_e) {}
+      });
+    }
+  }
+
+  // ==================== D40: M5 Meaning Group View ====================
+  async function renderD40(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.knowledge.d40_title"), true) + '<div class="sk" style="height:140px;"></div>';
+    bindLanguageButtons(vp);
+    if (!state.activeGroupId) return;
+
+    try {
+      const res = await apiFetch("api/v1/groups/" + encodeURIComponent(state.activeGroupId));
+      const grp = res.group;
+      state.activeGroupDetail = grp;
+
+      const itemTitleById = {};
+      (grp.members || []).forEach(function (m) {
+        itemTitleById[m.item_id] = m.prompt;
+      });
+
+      const membersHtml = (grp.members || [])
+        .map(function (m, idx) {
+          return (
+            '<div class="li">' +
+            '<span class="pill">' +
+            (idx + 1) +
+            "</span>" +
+            '<div class="col grow" style="gap:2px;">' +
+            '<div class="b">' +
+            escapeHtml(m.prompt) +
+            "</div>" +
+            '<div class="sm mu">' +
+            escapeHtml(m.answer) +
+            "</div>" +
+            "</div>" +
+            '<span class="chip">' +
+            escapeHtml(m.role_label) +
+            "</span>" +
+            "</div>"
+          );
+        })
+        .join("");
+
+      const relsHtml = (grp.relations || [])
+        .map(function (r) {
+          const fromLabel = itemTitleById[r.from_item_id] || r.from_item_id;
+          const toLabel = itemTitleById[r.to_item_id] || r.to_item_id;
+          const relKey = "miniapp.knowledge.rel_" + r.relation_type;
+          return (
+            '<div class="bn col" style="gap:4px;">' +
+            '<div class="rw sm">' +
+            '<span class="b">' +
+            escapeHtml(fromLabel) +
+            "</span>" +
+            '<span class="chip c-pr">' +
+            escapeHtml(t(relKey)) +
+            "</span>" +
+            '<span class="b">' +
+            escapeHtml(toLabel) +
+            "</span>" +
+            "</div>" +
+            (r.explanation ? '<div class="sm mu">' + escapeHtml(r.explanation) + "</div>" : "") +
+            "</div>"
+          );
+        })
+        .join("");
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.knowledge.d40_title"), true) +
+        (grp.status === "needs_review"
+          ? '<div class="bn wn">' + escapeHtml(t("miniapp.knowledge.d40_needs_review")) + "</div>"
+          : "") +
+        '<section class="card col" style="gap:10px;">' +
+        '<div class="row sp">' +
+        '<h1 class="h2">🕸 ' +
+        escapeHtml(grp.title) +
+        "</h1>" +
+        '<div class="row" style="gap:6px;">' +
+        '<button type="button" class="btn b2 bsm" id="d40-why-m5-btn">M5</button>' +
+        '<button type="button" class="btn b2 bsm" id="d40-edit-btn">' +
+        escapeHtml(t("miniapp.common.edit")) +
+        "</button>" +
+        "</div>" +
+        "</div>" +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.knowledge.d40_principle")) +
+        "</div>" +
+        "<div>" +
+        escapeHtml(grp.principle) +
+        "</div>" +
+        (grp.condition
+          ? '<div class="eyebrow">' +
+            escapeHtml(t("miniapp.knowledge.d40_condition")) +
+            "</div><div class='sm mu'>" +
+            escapeHtml(grp.condition) +
+            "</div>"
+          : "") +
+        "</section>" +
+        '<section class="col" style="gap:8px;">' +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.knowledge.d40_members", { count: (grp.members || []).length })) +
+        "</div>" +
+        '<div class="list">' +
+        membersHtml +
+        "</div>" +
+        "</section>" +
+        (relsHtml
+          ? '<section class="col" style="gap:8px;">' +
+            '<div class="eyebrow">' +
+            escapeHtml(t("miniapp.knowledge.d40_relations")) +
+            "</div>" +
+            relsHtml +
+            "</section>"
+          : "");
+
+      bindLanguageButtons(vp);
+
+      const whyBtn = document.getElementById("d40-why-m5-btn");
+      if (whyBtn) {
+        whyBtn.addEventListener("click", function () {
+          openScienceSheet("M5");
+        });
+      }
+
+      const editBtn = document.getElementById("d40-edit-btn");
+      if (editBtn) {
+        editBtn.addEventListener("click", function () {
+          openGroupEditorD41(grp.topic_id, grp);
+        });
+      }
+    } catch (_e) {}
+  }
+
+  // ==================== D41: M5 Meaning Group & Relations Editor (2–7 items) ====================
+  async function openGroupEditorD41(topicId, existingGroup) {
+    try {
+      const topDetail = await apiFetch("api/v1/topics/" + encodeURIComponent(topicId));
+      const availableItems = (topDetail.items || []).filter(function (it) {
+        return it.status === "active";
+      });
+      state.groupDraft = existingGroup
+        ? {
+            id: existingGroup.id,
+            topic_id: topicId,
+            title: existingGroup.title,
+            principle: existingGroup.principle,
+            condition: existingGroup.condition || "",
+            selectedIds: (existingGroup.members || []).map(function (m) {
+              return m.item_id;
+            }),
+            relations: (existingGroup.relations || []).map(function (r) {
+              return {
+                from_item_id: r.from_item_id,
+                to_item_id: r.to_item_id,
+                relation_type: r.relation_type,
+                direction: r.direction || "forward",
+                explanation: r.explanation || "",
+              };
+            }),
+            availableItems: availableItems,
+            revision: existingGroup.revision,
+          }
+        : {
+            id: null,
+            topic_id: topicId,
+            title: "",
+            principle: "",
+            condition: "",
+            selectedIds: availableItems.slice(0, 2).map(function (it) {
+              return it.id;
+            }),
+            relations: [],
+            availableItems: availableItems,
+          };
+      navigateTo("D41");
+    } catch (_e) {}
+  }
+
+  function renderD41(vp) {
+    const draft = state.groupDraft;
+    if (!draft) {
+      handleHierarchicalBack();
+      return;
+    }
+    const isEdit = Boolean(draft.id);
+    const titleStr = isEdit ? t("miniapp.knowledge.d41_edit_title") : t("miniapp.knowledge.d41_create_title");
+
+    const itemsPickerHtml = (draft.availableItems || [])
+      .map(function (it) {
+        const isSel = draft.selectedIds.indexOf(it.id) !== -1;
+        return (
+          '<button type="button" class="opt ' +
+          (isSel ? "on" : "") +
+          '" data-toggle-member="' +
+          escapeHtml(it.id) +
+          '">' +
+          '<span class="cbx ' +
+          (isSel ? "on" : "") +
+          '">✓</span>' +
+          '<span class="grow">' +
+          escapeHtml(it.prompt) +
+          "</span>" +
+          "</button>"
+        );
+      })
+      .join("");
+
+    const countValid = draft.selectedIds.length >= 2 && draft.selectedIds.length <= 7;
+
+    vp.innerHTML =
+      renderTopBar(titleStr, true) +
+      '<section class="card col" style="gap:12px;">' +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d41-title">' +
+      escapeHtml(t("miniapp.knowledge.d41_title_label")) +
+      "</label>" +
+      '<input id="d41-title" class="inp" type="text" value="' +
+      escapeHtml(draft.title) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d41-principle">' +
+      escapeHtml(t("miniapp.knowledge.d41_principle_label")) +
+      "</label>" +
+      '<textarea id="d41-principle" class="inp ta">' +
+      escapeHtml(draft.principle) +
+      "</textarea>" +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d41-cond">' +
+      escapeHtml(t("miniapp.knowledge.d41_condition_label")) +
+      "</label>" +
+      '<input id="d41-cond" class="inp" type="text" value="' +
+      escapeHtml(draft.condition) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:8px;">' +
+      '<div class="row sp">' +
+      '<span class="lab">' +
+      escapeHtml(t("miniapp.knowledge.d41_select_members")) +
+      "</span>" +
+      '<span class="chip ' +
+      (countValid ? "c-ok" : "c-er") +
+      '">' +
+      draft.selectedIds.length +
+      " / 2–7</span>" +
+      "</div>" +
+      itemsPickerHtml +
+      '<button type="button" class="btn b2 bsm" id="d41-inline-item-btn">' +
+      escapeHtml(t("miniapp.knowledge.d41_create_inline_item")) +
+      "</button>" +
+      "</div>" +
+      '<button type="button" class="btn ' +
+      (countValid ? "" : "bdis") +
+      '" id="d41-save-btn">' +
+      escapeHtml(t("miniapp.common.save")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    function syncGroupDraftInputs() {
+      const tEl = document.getElementById("d41-title");
+      const pEl = document.getElementById("d41-principle");
+      const cEl = document.getElementById("d41-cond");
+      if (tEl) draft.title = tEl.value;
+      if (pEl) draft.principle = pEl.value;
+      if (cEl) draft.condition = cEl.value;
+    }
+
+    vp.querySelectorAll("[data-toggle-member]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        syncGroupDraftInputs();
+        const iid = btn.getAttribute("data-toggle-member");
+        const pos = draft.selectedIds.indexOf(iid);
+        if (pos !== -1) {
+          draft.selectedIds.splice(pos, 1);
+        } else if (draft.selectedIds.length < 7) {
+          draft.selectedIds.push(iid);
+        }
+        renderCurrentScreen();
+      });
+    });
+
+    const inlineItemBtn = document.getElementById("d41-inline-item-btn");
+    if (inlineItemBtn) {
+      inlineItemBtn.addEventListener("click", function () {
+        syncGroupDraftInputs();
+        openItemEditorD09Edit(draft.topic_id, null, true);
+      });
+    }
+
+    const saveBtn = document.getElementById("d41-save-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", async function () {
+        syncGroupDraftInputs();
+        if (!countValid || !draft.title.trim() || !draft.principle.trim()) return;
+        triggerHaptic("notification", "success");
+
+        const membersPayload = draft.selectedIds.map(function (iid, idx) {
+          return {
+            item_id: iid,
+            role_label: idx === 0 ? "basis" : "consequence",
+            explanation: "",
+          };
+        });
+        const relationsPayload =
+          draft.selectedIds.length >= 2
+            ? [
+                {
+                  from_item_id: draft.selectedIds[0],
+                  to_item_id: draft.selectedIds[1],
+                  relation_type: "consequence",
+                  direction: "forward",
+                  explanation: draft.principle,
+                },
+              ]
+            : [];
+
+        try {
+          if (isEdit) {
+            const res = await apiFetch("api/v1/groups/" + encodeURIComponent(draft.id), {
+              method: "PUT",
+              body: {
+                title: draft.title,
+                principle: draft.principle,
+                condition: draft.condition,
+                members: membersPayload,
+                relations: relationsPayload,
+                revision: draft.revision,
+              },
+            });
+            state.activeGroupId = res.group.id;
+          } else {
+            const res = await apiFetch("api/v1/groups", {
+              method: "POST",
+              body: {
+                topic_id: draft.topic_id,
+                title: draft.title,
+                principle: draft.principle,
+                condition: draft.condition,
+                members: membersPayload,
+                relations: relationsPayload,
+              },
+            });
+            state.activeGroupId = res.group.id;
+          }
+          state.groupDraft = null;
+          navigateTo("D40", { pushHistory: false });
+        } catch (_e) {}
       });
     }
   }
