@@ -348,10 +348,24 @@
       renderD20(vp);
     } else if (state.currentScreen === "D21") {
       renderD21(vp);
+    } else if (state.currentScreen === "D24") {
+      renderD24(vp);
+    } else if (state.currentScreen === "D25") {
+      renderD25(vp);
+    } else if (state.currentScreen === "D26") {
+      renderD26(vp);
     } else if (state.currentScreen === "D27" || state.currentScreen === "D28") {
       renderD27D28(vp);
     } else if (state.currentScreen === "D29") {
       renderD29(vp);
+    } else if (state.currentScreen === "D31") {
+      renderD31(vp);
+    } else if (state.currentScreen === "D32") {
+      renderD32(vp);
+    } else if (state.currentScreen === "D33") {
+      renderD33(vp);
+    } else if (state.currentScreen === "D35") {
+      renderD35(vp);
     } else if (state.currentScreen === "D36") {
       renderD36(vp);
     } else if (state.currentScreen === "D39") {
@@ -4154,6 +4168,505 @@
         });
       }
     } catch (_e) {}
+  }
+
+  // ==================== D24, D25, D26, D31, D32, D33 & D35: Progress, Settings, Notifications, Export & Deletion ====================
+  function formatMetricLine(metricObj) {
+    if (!metricObj) return "";
+    const denom = t("miniapp.progress.d24_k_of_n", {
+      k: metricObj.correct_count,
+      n: metricObj.total_count,
+    });
+    if (!metricObj.sufficient_data) {
+      return denom + " · " + t("miniapp.progress.d24_not_enough_data");
+    }
+    return metricObj.percentage + "% (" + denom + ")";
+  }
+
+  async function renderD24(vp) {
+    const winDays = state.progressWindowDays || 7;
+    vp.innerHTML =
+      renderTopBar(t("miniapp.progress.d24_title"), false) +
+      '<div class="sk" style="height:180px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const p = await apiFetch("api/v1/progress?window_days=" + encodeURIComponent(winDays));
+      const ov = p.overall;
+      const byObj = p.by_objective || {};
+      const hb = p.habits_summary || {};
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.progress.d24_title"), false) +
+        '<div class="seg">' +
+        '<button type="button" class="' +
+        (winDays === 7 ? "on" : "") +
+        '" data-prog-win="7">' +
+        escapeHtml(t("miniapp.progress.d24_window_7d")) +
+        "</button>" +
+        '<button type="button" class="' +
+        (winDays === 30 ? "on" : "") +
+        '" data-prog-win="30">' +
+        escapeHtml(t("miniapp.progress.d24_window_30d")) +
+        "</button>" +
+        "</div>" +
+        '<section class="card col" style="gap:10px;">' +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.progress.d24_overall_label")) +
+        "</div>" +
+        '<div class="h2">' +
+        escapeHtml(formatMetricLine(ov)) +
+        "</div>" +
+        '<div class="dv"></div>' +
+        '<div class="sm"><b>' +
+        escapeHtml(t("miniapp.progress.d24_obj_recall")) +
+        ":</b> " +
+        escapeHtml(formatMetricLine(byObj.recall)) +
+        "</div>" +
+        '<div class="sm"><b>' +
+        escapeHtml(t("miniapp.progress.d24_obj_explain")) +
+        ":</b> " +
+        escapeHtml(formatMetricLine(byObj.explain)) +
+        "</div>" +
+        '<div class="sm"><b>' +
+        escapeHtml(t("miniapp.progress.d24_obj_discriminate")) +
+        ":</b> " +
+        escapeHtml(formatMetricLine(byObj.discriminate)) +
+        "</div>" +
+        '<div class="sm"><b>' +
+        escapeHtml(t("miniapp.progress.d24_obj_relate")) +
+        ":</b> " +
+        escapeHtml(formatMetricLine(byObj.relate)) +
+        "</div>" +
+        "</section>" +
+        '<section class="card col" style="gap:8px;">' +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.progress.d24_habits_label")) +
+        "</div>" +
+        '<div class="sm">' +
+        escapeHtml(
+          t("miniapp.progress.d24_habits_k_of_n", {
+            k: hb.completed_count || 0,
+            n: hb.planned_count || 0,
+            min: hb.minimum_count || 0,
+          })
+        ) +
+        "</div>" +
+        "</section>" +
+        '<div class="col" style="gap:8px;">' +
+        '<button type="button" class="btn b2" id="d24-drilldown-btn">' +
+        escapeHtml(t("miniapp.progress.d24_open_drilldown_btn")) +
+        "</button>" +
+        '<button type="button" class="btn b2" id="d24-weekly-btn">' +
+        escapeHtml(t("miniapp.progress.d24_open_weekly_btn")) +
+        "</button>" +
+        '<button type="button" class="btn b3" id="d24-settings-btn">' +
+        escapeHtml(t("miniapp.progress.d24_open_settings_btn")) +
+        "</button>" +
+        "</div>";
+
+      bindLanguageButtons(vp);
+
+      vp.querySelectorAll("[data-prog-win]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          state.progressWindowDays = parseInt(btn.getAttribute("data-prog-win"), 10) || 7;
+          renderCurrentScreen();
+        });
+      });
+
+      const ddBtn = document.getElementById("d24-drilldown-btn");
+      if (ddBtn) {
+        ddBtn.addEventListener("click", function () {
+          navigateTo("D25");
+        });
+      }
+      const wkBtn = document.getElementById("d24-weekly-btn");
+      if (wkBtn) {
+        wkBtn.addEventListener("click", function () {
+          navigateTo("D35");
+        });
+      }
+      const stBtn = document.getElementById("d24-settings-btn");
+      if (stBtn) {
+        stBtn.addEventListener("click", function () {
+          navigateTo("D26");
+        });
+      }
+    } catch (_e) {}
+  }
+
+  async function renderD25(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.progress.d25_title"), true) + '<div class="sk" style="height:180px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const dd = await apiFetch("api/v1/progress/drilldown?window_days=30");
+      const topicsHtml = (dd.topics || [])
+        .map(function (tp) {
+          return (
+            '<div class="card col" style="gap:4px; padding:12px;">' +
+            '<div class="b">' +
+            escapeHtml(tp.title) +
+            "</div>" +
+            '<div class="sm mu">' +
+            escapeHtml(formatMetricLine(tp.metrics)) +
+            "</div></div>"
+          );
+        })
+        .join("");
+
+      const groupsHtml = (dd.groups || [])
+        .map(function (gr) {
+          return (
+            '<div class="card col" style="gap:4px; padding:12px;">' +
+            '<div class="b">🕸 ' +
+            escapeHtml(gr.title) +
+            "</div>" +
+            '<div class="sm mu">' +
+            escapeHtml(formatMetricLine(gr.metrics)) +
+            "</div></div>"
+          );
+        })
+        .join("");
+
+      const habitsHtml = (dd.habits || [])
+        .map(function (hb) {
+          return (
+            '<div class="card col" style="gap:4px; padding:12px;">' +
+            '<div class="b">🌱 ' +
+            escapeHtml(hb.title) +
+            "</div>" +
+            '<div class="sm mu">' +
+            escapeHtml(
+              t("miniapp.progress.d24_habits_k_of_n", {
+                k: hb.completed_count,
+                n: hb.planned_count,
+                min: hb.minimum_count,
+              })
+            ) +
+            "</div></div>"
+          );
+        })
+        .join("");
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.progress.d25_title"), true) +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.progress.d25_topics_header")) +
+        "</div>" +
+        (topicsHtml || '<div class="sm mu">—</div>') +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.progress.d25_groups_header")) +
+        "</div>" +
+        (groupsHtml || '<div class="sm mu">—</div>') +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.progress.d25_habits_header")) +
+        "</div>" +
+        (habitsHtml || '<div class="sm mu">—</div>');
+
+      bindLanguageButtons(vp);
+    } catch (_e) {}
+  }
+
+  async function renderD35(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.progress.d35_title"), true) + '<div class="sk" style="height:160px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const res = await apiFetch("api/v1/weekly-reviews");
+      const list = res.weekly_reviews || [];
+
+      const cardsHtml = list
+        .map(function (wr) {
+          const suggHtml = (wr.ai_suggestions || [])
+            .map(function (s) {
+              return '<div class="xs">• ' + escapeHtml(s.text) + "</div>";
+            })
+            .join("");
+          return (
+            '<section class="card col" style="gap:8px;">' +
+            '<div class="eyebrow">' +
+            escapeHtml(wr.period_label) +
+            "</div>" +
+            '<div class="sm">' +
+            escapeHtml(wr.ai_summary || "") +
+            "</div>" +
+            suggHtml +
+            "</section>"
+          );
+        })
+        .join("");
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.progress.d35_title"), true) +
+        '<button type="button" class="btn" id="d35-gen-btn">' +
+        escapeHtml(t("miniapp.progress.d35_generate_btn")) +
+        "</button>" +
+        cardsHtml;
+
+      bindLanguageButtons(vp);
+
+      const genBtn = document.getElementById("d35-gen-btn");
+      if (genBtn) {
+        genBtn.addEventListener("click", async function () {
+          try {
+            await apiFetch("api/v1/weekly-reviews/generate?use_ai=true", { method: "POST", body: {} });
+            renderCurrentScreen();
+          } catch (_e) {}
+        });
+      }
+    } catch (_e) {}
+  }
+
+  function renderD26(vp) {
+    const u = state.user || {};
+    vp.innerHTML =
+      renderTopBar(t("miniapp.progress.d26_title"), true) +
+      '<section class="card col" style="gap:12px;">' +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d26-min">' +
+      escapeHtml(t("miniapp.progress.d26_rhythm_label")) +
+      "</label>" +
+      '<input id="d26-min" class="inp" type="number" min="5" max="60" value="' +
+      escapeHtml(u.daily_study_minutes || 10) +
+      '" />' +
+      "</div>" +
+      '<div class="col" style="gap:6px;">' +
+      '<label class="lab" for="d26-tz">' +
+      escapeHtml(t("miniapp.progress.d26_tz_label")) +
+      "</label>" +
+      '<input id="d26-tz" class="inp" type="text" value="' +
+      escapeHtml(u.timezone || "Europe/Moscow") +
+      '" />' +
+      "</div>" +
+      '<label class="opt" style="cursor:pointer;">' +
+      '<input type="checkbox" id="d26-haptics" ' +
+      (u.haptics_enabled !== false ? "checked" : "") +
+      " />" +
+      '<span class="grow">' +
+      escapeHtml(t("miniapp.progress.d26_haptics_label")) +
+      "</span></label>" +
+      '<label class="opt" style="cursor:pointer;">' +
+      '<input type="checkbox" id="d26-analytics" ' +
+      (u.analytics_allowed !== false ? "checked" : "") +
+      " />" +
+      '<span class="grow">' +
+      escapeHtml(t("miniapp.progress.d26_analytics_label")) +
+      "</span></label>" +
+      '<button type="button" class="btn" id="d26-save-btn">' +
+      escapeHtml(t("miniapp.common.save")) +
+      "</button>" +
+      "</section>" +
+      '<div class="col" style="gap:8px;">' +
+      '<button type="button" class="btn b2" id="d26-nav-d27">' +
+      escapeHtml(t("miniapp.progress.d26_open_billing_btn")) +
+      "</button>" +
+      '<button type="button" class="btn b2" id="d26-nav-d31">' +
+      escapeHtml(t("miniapp.progress.d26_open_notif_btn")) +
+      "</button>" +
+      '<button type="button" class="btn b2" id="d26-nav-d32">' +
+      escapeHtml(t("miniapp.progress.d26_open_privacy_btn")) +
+      "</button>" +
+      '<button type="button" class="btn b3" id="d26-nav-d33">' +
+      escapeHtml(t("miniapp.progress.d26_open_help_btn")) +
+      "</button>" +
+      "</div>";
+
+    bindLanguageButtons(vp);
+
+    const saveBtn = document.getElementById("d26-save-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", async function () {
+        const minInp = document.getElementById("d26-min");
+        const tzInp = document.getElementById("d26-tz");
+        const hapInp = document.getElementById("d26-haptics");
+        const anInp = document.getElementById("d26-analytics");
+        try {
+          const res = await apiFetch("api/v1/settings", {
+            method: "PATCH",
+            body: {
+              daily_study_minutes: parseInt(minInp.value, 10) || 10,
+              timezone: tzInp.value.trim() || "Europe/Moscow",
+              haptics_enabled: Boolean(hapInp && hapInp.checked),
+              analytics_allowed: Boolean(anInp && anInp.checked),
+            },
+          });
+          if (res.user) state.user = res.user;
+          triggerHaptic("notification", "success");
+        } catch (_e) {}
+      });
+    }
+
+    const b27 = document.getElementById("d26-nav-d27");
+    if (b27) b27.addEventListener("click", function () { navigateTo("D27"); });
+    const b31 = document.getElementById("d26-nav-d31");
+    if (b31) b31.addEventListener("click", function () { navigateTo("D31"); });
+    const b32 = document.getElementById("d26-nav-d32");
+    if (b32) b32.addEventListener("click", function () { navigateTo("D32"); });
+    const b33 = document.getElementById("d26-nav-d33");
+    if (b33) b33.addEventListener("click", function () { navigateTo("D33"); });
+  }
+
+  async function renderD31(vp) {
+    vp.innerHTML = renderTopBar(t("miniapp.progress.d31_title"), true) + '<div class="sk" style="height:140px;"></div>';
+    bindLanguageButtons(vp);
+
+    try {
+      const res = await apiFetch("api/v1/notifications");
+      const n = res.notifications || {};
+
+      vp.innerHTML =
+        renderTopBar(t("miniapp.progress.d31_title"), true) +
+        '<section class="card col" style="gap:12px;">' +
+        '<label class="opt" style="cursor:pointer;">' +
+        '<input type="checkbox" id="d31-enabled" ' +
+        (n.enabled ? "checked" : "") +
+        " />" +
+        '<span class="grow b">' +
+        escapeHtml(t("miniapp.progress.d31_enabled_label")) +
+        "</span></label>" +
+        '<div class="col" style="gap:6px;">' +
+        '<label class="lab" for="d31-time">' +
+        escapeHtml(t("miniapp.progress.d31_time_label")) +
+        "</label>" +
+        '<input id="d31-time" class="inp" type="time" value="' +
+        escapeHtml(n.daily_time || "08:30") +
+        '" />' +
+        "</div>" +
+        '<div class="sm mu">' +
+        escapeHtml(t("miniapp.progress.d31_quiet_label") + ": " + (n.quiet_start || "22:00") + " – " + (n.quiet_end || "08:00")) +
+        "</div>" +
+        '<button type="button" class="btn" id="d31-save-btn">' +
+        escapeHtml(t("miniapp.common.save")) +
+        "</button>" +
+        '<button type="button" class="btn b2" id="d31-test-btn">' +
+        escapeHtml(t("miniapp.progress.d31_test_btn")) +
+        "</button>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const saveBtn = document.getElementById("d31-save-btn");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", async function () {
+          const enCb = document.getElementById("d31-enabled");
+          const tmInp = document.getElementById("d31-time");
+          if (enCb && enCb.checked && tg && typeof tg.requestWriteAccess === "function") {
+            try {
+              tg.requestWriteAccess();
+            } catch (_e) {}
+          }
+          try {
+            await apiFetch("api/v1/notifications", {
+              method: "PATCH",
+              body: {
+                enabled: Boolean(enCb && enCb.checked),
+                write_access_granted: Boolean(enCb && enCb.checked),
+                daily_time: tmInp ? tmInp.value : "08:30",
+              },
+            });
+            triggerHaptic("notification", "success");
+          } catch (_e) {}
+        });
+      }
+
+      const testBtn = document.getElementById("d31-test-btn");
+      if (testBtn) {
+        testBtn.addEventListener("click", async function () {
+          try {
+            await apiFetch("api/v1/notifications/test", { method: "POST", body: {} });
+            triggerHaptic("notification", "success");
+          } catch (_e) {}
+        });
+      }
+    } catch (_e) {}
+  }
+
+  function renderD32(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.progress.d32_title"), true) +
+      '<section class="card col" style="gap:10px;">' +
+      '<h2 class="h2">' +
+      escapeHtml(t("miniapp.progress.d32_title")) +
+      "</h2>" +
+      '<p class="sm mu">' +
+      escapeHtml(t("miniapp.progress.d32_export_desc")) +
+      "</p>" +
+      '<button type="button" class="btn" id="d32-export-btn">' +
+      escapeHtml(t("miniapp.progress.d32_export_btn")) +
+      "</button>" +
+      '<div id="d32-export-box"></div>' +
+      "</section>" +
+      '<section class="card col" style="gap:10px; border-color:var(--er);">' +
+      '<h3 class="h3">' +
+      escapeHtml(t("miniapp.progress.d32_delete_title")) +
+      "</h3>" +
+      '<p class="sm mu">' +
+      escapeHtml(t("miniapp.progress.d32_delete_desc")) +
+      "</p>" +
+      '<button type="button" class="btn b2" id="d32-delete-btn" style="color:var(--er);">' +
+      escapeHtml(t("miniapp.progress.d32_delete_btn")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    const expBtn = document.getElementById("d32-export-btn");
+    if (expBtn) {
+      expBtn.addEventListener("click", async function () {
+        try {
+          const res = await apiFetch("api/v1/exports", { method: "POST", body: {} });
+          const box = document.getElementById("d32-export-box");
+          if (box) {
+            box.innerHTML =
+              '<textarea class="inp ta xs" readonly style="min-height:140px;">' +
+              escapeHtml(res.markdown_preview || "") +
+              "</textarea>";
+          }
+        } catch (_e) {}
+      });
+    }
+
+    const delBtn = document.getElementById("d32-delete-btn");
+    if (delBtn) {
+      delBtn.addEventListener("click", async function () {
+        try {
+          await apiFetch("api/v1/account/delete", {
+            method: "POST",
+            body: { confirm_phrase: "DELETE" },
+          });
+          localStorage.removeItem("br_session_token");
+          state.sessionToken = null;
+          state.user = null;
+          navigateTo("D01", { pushHistory: false });
+        } catch (_e) {}
+      });
+    }
+  }
+
+  function renderD33(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.progress.d33_title"), true) +
+      '<section class="card col" style="gap:12px;">' +
+      '<h1 class="h2">' +
+      escapeHtml(t("miniapp.progress.d33_title")) +
+      "</h1>" +
+      '<p class="sm">' +
+      escapeHtml(t("miniapp.progress.d33_support_note")) +
+      "</p>" +
+      '<button type="button" class="btn" id="d33-open-d42">' +
+      escapeHtml(t("miniapp.progress.d33_science_btn")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    const scBtn = document.getElementById("d33-open-d42");
+    if (scBtn) {
+      scBtn.addEventListener("click", function () {
+        openScienceSheet("M1");
+      });
+    }
   }
 
   // ==================== Bottom Sheet Controller (Section 3.12) ====================

@@ -29,6 +29,7 @@ from brainrecall.billing_routes import router as billing_router
 from brainrecall.habits_streaks_routes import router as habits_streaks_router
 from brainrecall.knowledge_routes import router as knowledge_router
 from brainrecall.materials_ai_routes import router as materials_ai_router
+from brainrecall.progress_account_routes import router as progress_account_router
 from brainrecall.study_routes import router as study_router
 from brainrecall.models import (
     Entitlement,
@@ -82,6 +83,7 @@ app.include_router(study_router)
 app.include_router(habits_streaks_router)
 app.include_router(materials_ai_router)
 app.include_router(billing_router)
+app.include_router(progress_account_router)
 
 
 class BootstrapRequest(BaseModel):
