@@ -1,0 +1,49 @@
+/* BrainRecall — цветовые токены. Светлая тема: :root, тёмная: [data-theme="dark"] */
+:root{
+  --bg: #F3F2EE;
+  --sf: #FFFFFF;
+  --sf2: #EAE8E2;
+  --ln: #E2DFD8;
+  --tx: #15140F;
+  --mu: #5E5D57;
+  --pr: #15140F;
+  --prt: #FFFFFF;
+  --prs: #EAE8E2;
+  --hb: #1F6F68;
+  --hbs: #DDEFEC;
+  --ok: #24683F;
+  --oks: #E0EFE5;
+  --wn: #835000;
+  --wns: #F6EAD3;
+  --er: #AE2A20;
+  --ers: #F8E2DF;
+  --ai: #5A3EA6;
+  --ais: #ECE6F8;
+  --em: #C2410C;
+  --ems: #FBE9DC;
+  --scr: rgba(15,15,12,.42);
+}
+[data-theme="dark"]{
+  --bg: #0F0F0D;
+  --sf: #1A1A17;
+  --sf2: #25241F;
+  --ln: #2E2D28;
+  --tx: #F2F1EC;
+  --mu: #A3A29B;
+  --pr: #F2F1EC;
+  --prt: #0F0F0D;
+  --prs: #25241F;
+  --hb: #6FD0C4;
+  --hbs: #15302C;
+  --ok: #7FD49B;
+  --oks: #17301F;
+  --wn: #EBBB6C;
+  --wns: #36291A;
+  --er: #F49A92;
+  --ers: #3B2120;
+  --ai: #C0AEF7;
+  --ais: #29233F;
+  --em: #FF8A4C;
+  --ems: #3A2014;
+  --scr: rgba(0,0,0,.6);
+}

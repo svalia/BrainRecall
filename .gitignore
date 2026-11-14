@@ -1,0 +1,46 @@
+# Secrets & API tokens — NEVER COMMIT
+.env
+.env.*
+!.env.example
+*.env
+TGandDSAPItokens.rtf
+*tokens*.rtf
+*token*.rtf
+*secret*
+
+# Large design archives & canvas exports
+*.zip
+*.tar
+*.tar.gz
+BrainRecall-design/
+BrainRecall-design-v2/
+
+# Python / Node / Build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+node_modules/
+
+# Local runtime storage & databases
+storage/
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+logs/
+*.log
+
+# OS & Editor files
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,204 @@
+{
+  "meta": {
+    "app_name": "BrainRecall",
+    "bot_handle": "@BrainRecallBot",
+    "locale": "en"
+  },
+  "bot": {
+    "commands": {
+      "start": "Launch the app and learn more",
+      "lang": "Switch interface language (RU / EN)",
+      "help": "Help and support",
+      "paysupport": "Payment & refund support"
+    },
+    "welcome": {
+      "title": "🧠 <b>BrainRecall</b> — lasting knowledge and atomic habits",
+      "body": "Turn what you read into durable knowledge using 5 evidence-based learning methods and build resilient habits with Streak Freeze protection.\n\n• <b>Free forever</b>: manual mode, 3 topics, 3 habits, up to 500 items, and meaning groups.\n• <b>7-day free trial</b>: AI file import (PDF, EPUB, DOCX, MD, TXT) and AI answer grading — starts only on your first AI action.",
+      "open_app": "Open BrainRecall",
+      "change_lang": "🌐 Language / Язык",
+      "help_btn": "❓ Help & Science"
+    },
+    "lang": {
+      "prompt": "Choose your bot and app language / Выберите язык:",
+      "changed": "Language switched to English 🇬🇧",
+      "ru": "🇷🇺 Русский",
+      "en": "🇬🇧 English"
+    },
+    "help": {
+      "title": "❓ <b>BrainRecall Help</b>",
+      "body": "• <b>How it works:</b> We combine 5 cognitive methods: retrieval practice (M1), spaced practice (M2), interleaved practice (M3), self-explanation (M4), and concept relations (M5).\n• <b>Free plan:</b> Free forever for manual use with up to 3 active topics and 3 habits.\n• <b>Payments & Subscriptions:</b> Powered by Telegram Stars. For billing help, use /paysupport or open Help inside the app."
+    },
+    "paysupport": {
+      "title": "💳 <b>Payments & Telegram Stars Support</b>",
+      "body": "All subscriptions (Start — 499 ⭐, Pro — 1,099 ⭐) and Streak Freeze purchases use official Telegram Stars billing.\n\n• You can cancel auto-renewal anytime on the Subscription screen (D28) inside the Mini App.\n• After cancellation, your current paid period remains active until its expiration date.\n• If a charge failed or you need a Stars refund, open Help & Support (D33) or reply to this message and we will verify your <code>telegram_payment_charge_id</code>."
+    },
+    "reminder": {
+      "study_due": "🧠 You have <b>{count}</b> study exercises scheduled today (~{minutes} min). Open the app to keep your streak alive!",
+      "habit_due": "⚡ Time to check in on your habit “<b>{title}</b>”. Even your 2-minute minimum counts toward today's streak!",
+      "open_today": "Open Today's Plan",
+      "snooze_2h": "Snooze for 2h",
+      "skip_today": "Skip today",
+      "snoozed": "Got it, I'll remind you in 2 hours ⏳",
+      "skipped": "Marked as skipped for today. Have a calm day!"
+    },
+    "payment": {
+      "success_plan": "✅ Your <b>{plan}</b> subscription is active until {until}! Thank you for supporting BrainRecall.",
+      "success_freeze": "❄️ Streak protection (<b>{kind}</b>) has been added to your account!"
+    }
+  },
+  "miniapp": {
+    "common": {
+      "app_title": "BrainRecall",
+      "back": "Back",
+      "close": "Close",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "delete": "Delete",
+      "edit": "Edit",
+      "continue": "Continue",
+      "done": "Done",
+      "retry": "Retry",
+      "loading": "Loading…",
+      "offline_banner": "No network connection. Check your internet and try again.",
+      "lang_ru": "RU",
+      "lang_en": "EN",
+      "free_forever": "Free forever",
+      "why_this_exercise": "Why this exercise?",
+      "source_fragment": "Source excerpt",
+      "got_it": "Got it",
+      "later": "Later",
+      "updated_badge": "Updated",
+      "indirect_badge": "Indirect evidence",
+      "tokens": "tokens",
+      "minutes_short": "min",
+      "days_short": "d"
+    },
+    "nav": {
+      "today": "Today",
+      "knowledge": "Knowledge",
+      "habits": "Habits",
+      "progress": "Progress"
+    },
+    "d00": {
+      "loading_title": "Loading your daily plan…",
+      "loading_sub": "Syncing knowledge items, intervals, and habits",
+      "outside_tg_title": "Open BrainRecall in Telegram",
+      "outside_tg_desc": "To save your progress and sync with @BrainRecallBot, open the app inside Telegram or explore our interactive landing demo.",
+      "open_bot_cta": "Open @BrainRecallBot",
+      "view_landing_cta": "Explore Features & Science (D01)",
+      "error_title": "Could not load data",
+      "error_desc": "Please check your internet connection and try again."
+    },
+    "d01": {
+      "hero_badge": "Evidence-based memory & habit system",
+      "hero_title": "Remember what you read. Stick to what you do.",
+      "hero_subtitle": "5 peer-reviewed cognitive learning methods + an atomic habit tracker with 2-minute minimums and Streak Freeze protection.",
+      "cta_start_free": "Start for free",
+      "cta_try_demo": "Try a 60-sec exercise",
+      "section_problem_title": "Why do we forget most of what we read within a week?",
+      "section_problem_desc": "Rereading and highlighting create an illusion of competence: the text feels familiar while it is in front of you, but cannot be retrieved when needed.",
+      "section_demo_title": "Live Demo: experience the testing effect",
+      "demo_step_1": "1. Read the concept",
+      "demo_step_2": "2. Retrieve or explain",
+      "demo_step_3": "3. Check by criteria",
+      "demo_card_concept": "The Testing Effect (Roediger & Karpicke, 2006)",
+      "demo_card_text": "Actively retrieving an idea from memory strengthens neural retrieval routes far more effectively than rereading the same passage multiple times.",
+      "demo_prompt": "Why does retrieval practice outperform rereading after a week, even when your first recall attempt feels harder?",
+      "demo_placeholder": "Write 1–2 sentences in your own words or test yourself aloud…",
+      "demo_check_btn": "Check against criteria",
+      "demo_reset_btn": "Reset demo",
+      "demo_rubric_1": "Mentions active retrieval from memory without looking at the source",
+      "demo_rubric_2": "Notes the fluency/familiarity illusion caused by passive rereading",
+      "demo_rubric_3": "Concludes that retrieval strengthens long-term retention over days/weeks",
+      "section_science_title": "5 evidence-based learning methods",
+      "section_science_subtitle": "Tap any method to inspect the experimental results, boundary conditions, and primary DOIs (D42).",
+      "section_habits_title": "Habits that survive busy days",
+      "habits_feature_1_title": "2-minute minimum version",
+      "habits_feature_1_desc": "Too exhausted for a full workout or book chapter? Complete your minimum viable action to keep your identity and streak intact.",
+      "habits_feature_2_title": "Fair Streak Freeze reserve",
+      "habits_feature_2_desc": "Hold up to 2 single-day freezes: get 1 starter freeze on your first earned day + 1 free freeze every 7 earned days.",
+      "section_pricing_title": "Plans & Quotas",
+      "pricing_free_title": "Free — 0 ⭐",
+      "pricing_free_desc": "Free forever: 3 topics, 3 habits, up to 500 active items, all 5 methods and meaning groups manually.",
+      "pricing_trial_title": "7-Day Trial — 0 ⭐",
+      "pricing_trial_desc": "Starts only on your first AI operation: 30,000 import tokens, 20 AI checks, 5 AI cases, 1 AI habit plan.",
+      "pricing_start_title": "Start — 499 ⭐ / 30 days",
+      "pricing_start_desc": "10 topics, 10 habits, 10,000 items, 200,000 import tokens, 200 AI checks, 20 cases, 5 habit plans, 4 AI weekly reviews.",
+      "pricing_pro_title": "Pro — 1,099 ⭐ / 30 days",
+      "pricing_pro_desc": "50 topics, 30 habits, 30,000 items, 600,000 import tokens, 1,000 AI checks, 100 cases, 20 habit plans, 4 AI weekly reviews.",
+      "section_faq_title": "Frequently Asked Questions",
+      "faq_1_q": "Do I have to pay upfront or link a credit card?",
+      "faq_1_a": "No. Manual mode is free forever. The 7-day AI trial is free and starts only when you explicitly confirm your first AI file import or AI check.",
+      "faq_2_q": "What happens to my items if my subscription expires?",
+      "faq_2_a": "Nothing is deleted! You choose 3 active topics and 3 active habits to continue practicing, while everything else stays readable and exportable.",
+      "faq_3_q": "Where do the 80% and 33–36% numbers come from?",
+      "faq_3_a": "They come from Roediger & Karpicke (2006) for 1-week delayed retention of prose passages. Every method sheet (D42) lists the exact study scope and DOIs."
+    },
+    "d02": {
+      "title": "Set your comfortable rhythm",
+      "subtitle": "Practice consistently without burnout — you can adjust these settings anytime.",
+      "goal_label": "Starting focus",
+      "goal_both": "Knowledge + Habits",
+      "goal_knowledge": "Knowledge only",
+      "goal_habits": "Habits only",
+      "minutes_label": "Daily knowledge practice goal",
+      "min_5": "5 min (3–4 items)",
+      "min_10": "10 min (6–8 items)",
+      "min_15": "15 min (10–12 items)",
+      "min_20": "20 min (15+ items)",
+      "window_label": "Preferred reminder window",
+      "win_morning": "🌅 Morning (09:00)",
+      "win_afternoon": "☀️ Afternoon (14:00)",
+      "win_evening": "🌙 Evening (20:00)",
+      "tz_label": "Timezone (IANA)",
+      "submit_cta": "Save & open Today's Plan",
+      "skip_cta": "Skip — configure later"
+    },
+    "d03": {
+      "greeting": "Today's Plan",
+      "day_status_earned": "Day earned",
+      "day_status_pending": "In progress",
+      "day_status_frozen": "Protected by Freeze",
+      "day_status_neutral": "Neutral day",
+      "study_card_title": "Knowledge Exercises",
+      "study_card_empty": "No scheduled reviews due today. Add a knowledge item or run an extra practice session.",
+      "start_session_cta": "Start session",
+      "resume_session_cta": "Resume session",
+      "habits_card_title": "Today's Habits",
+      "habits_empty": "No habits created yet",
+      "add_first_topic": "+ Create topic or item",
+      "add_first_habit": "+ Create habit"
+    },
+    "d42": {
+      "sheet_title": "Why this exercise?",
+      "sheet_subtitle": "Scientific evidence and boundary conditions for our 5 learning methods",
+      "tab_m1": "M1 Retrieval",
+      "tab_m2": "M2 Spacing",
+      "tab_m3": "M3 Interleaving",
+      "tab_m4": "M4 Explanation",
+      "tab_m5": "M5 Relations",
+      "section_what": "What you do in the app",
+      "section_why": "Why it works",
+      "section_exp": "What the research showed",
+      "section_limits": "Where it works best & limitations",
+      "section_sources": "Primary sources"
+    },
+    "gestures": {
+      "back_hint": "Swipe from the edge to go back"
+    }
+  },
+  "api": {
+    "errors": {
+      "unauthorized": "Telegram Mini App authentication is required.",
+      "not_found": "The requested resource was not found.",
+      "conflict_revision": "This record was modified in another session. Please refresh and review changes.",
+      "quota_exceeded": "Current plan quota exceeded.",
+      "rate_limited": "Too many requests. Please wait a few seconds.",
+      "validation_error": "Please check the submitted fields."
+    }
+  },
+  "mcp": {
+    "server_description": "BrainRecall MCP server for managing topics, knowledge items, meaning groups, and habits."
+  }
+}

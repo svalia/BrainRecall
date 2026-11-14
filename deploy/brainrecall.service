@@ -1,0 +1,18 @@
+[Unit]
+Description=BrainRecall Telegram Bot & Mini App Backend
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=brainrecall
+Group=brainrecall
+WorkingDirectory=/opt/brainrecall/app
+EnvironmentFile=/opt/brainrecall/.env
+ExecStart=/opt/brainrecall/venv/bin/uvicorn brainrecall.main:app --host 127.0.0.1 --port 8096 --workers 2 --proxy-headers --forwarded-allow-ips="127.0.0.1"
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
