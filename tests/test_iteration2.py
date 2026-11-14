@@ -7,7 +7,11 @@ from brainrecall.main import app
 
 def test_topics_items_d34_groups_d40_d41_and_search() -> None:
     with TestClient(app) as client:
-        boot = client.post("/api/v1/auth/bootstrap", json={"demo_mode": True, "locale_hint": "ru"})
+        boot = client.post(
+            "/api/v1/auth/bootstrap",
+            headers={"X-Demo-User-Id": "999000222"},
+            json={"demo_mode": True, "locale_hint": "ru"},
+        )
         assert boot.status_code == 200
         token = boot.json()["session_token"]
         headers = {"Authorization": f"Bearer {token}"}

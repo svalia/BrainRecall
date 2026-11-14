@@ -43,6 +43,15 @@
     itemDraft: null,
     groupDraft: null,
     returnToD41AfterItemCreate: false,
+    sessionSetupMode: "regular",
+    sessionTopicFilter: null,
+    sessionGroupFilter: null,
+    activeStudySession: null,
+    studyAnswerMode: "written",
+    studyFormulaRevealed: false,
+    studyCheckedCriteria: [],
+    lastAttemptResult: null,
+    lastNeedsCorrective: false,
   };
 
   function t(key, params) {
@@ -310,6 +319,14 @@
       renderD40(vp);
     } else if (state.currentScreen === "D41") {
       renderD41(vp);
+    } else if (state.currentScreen === "D10") {
+      renderD10(vp);
+    } else if (state.currentScreen === "D11") {
+      renderD11(vp);
+    } else if (state.currentScreen === "D12") {
+      renderD12(vp);
+    } else if (state.currentScreen === "D13") {
+      renderD13(vp);
     } else {
       renderD03(vp);
     }
@@ -819,9 +836,14 @@
       '<p class="mu sm">' +
       escapeHtml(t("miniapp.d03.study_card_empty")) +
       "</p>" +
-      '<button type="button" class="btn" id="d03-open-landing-btn">' +
+      '<div class="col" style="gap:8px;">' +
+      '<button type="button" class="btn" id="d03-start-session-btn">' +
+      escapeHtml(t("miniapp.d03.start_session_cta")) +
+      "</button>" +
+      '<button type="button" class="btn b2" id="d03-open-landing-btn">' +
       escapeHtml(t("miniapp.d00.view_landing_cta")) +
       "</button>" +
+      "</div>" +
       "</section>";
 
     bindLanguageButtons(vp);
@@ -830,6 +852,14 @@
     if (openD42) {
       openD42.addEventListener("click", function () {
         openScienceSheet("M1");
+      });
+    }
+    const startSess = document.getElementById("d03-start-session-btn");
+    if (startSess) {
+      startSess.addEventListener("click", function () {
+        state.sessionTopicFilter = null;
+        state.sessionGroupFilter = null;
+        navigateTo("D10");
       });
     }
     const openLanding = document.getElementById("d03-open-landing-btn");
@@ -2044,6 +2074,519 @@
           state.groupDraft = null;
           navigateTo("D40", { pushHistory: false });
         } catch (_e) {}
+      });
+    }
+  }
+
+  // ==================== D10: Study Session Setup & Method Intro Prompt ====================
+  async function renderD10(vp) {
+    vp.innerHTML =
+      renderTopBar(t("miniapp.study.d10_title"), true) +
+      '<section class="card col" style="gap:14px;">' +
+      '<h1 class="h2">' +
+      escapeHtml(t("miniapp.study.d10_title")) +
+      "</h1>" +
+      '<div class="col" style="gap:8px;">' +
+      renderModeOpt("regular", t("miniapp.study.d10_mode_regular"), state.sessionSetupMode === "regular") +
+      renderModeOpt("targeted_mix", t("miniapp.study.d10_mode_mix"), state.sessionSetupMode === "targeted_mix") +
+      renderModeOpt("intro", t("miniapp.study.d10_mode_intro"), state.sessionSetupMode === "intro") +
+      "</div>" +
+      '<button type="button" class="btn b2" id="d10-open-d42-btn">' +
+      escapeHtml(t("miniapp.common.why_this_exercise")) +
+      "</button>" +
+      '<button type="button" class="btn" id="d10-launch-btn">' +
+      escapeHtml(t("miniapp.d03.start_session_cta")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    vp.querySelectorAll("[data-sess-mode]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.sessionSetupMode = btn.getAttribute("data-sess-mode");
+        renderCurrentScreen();
+      });
+    });
+
+    const d42Btn = document.getElementById("d10-open-d42-btn");
+    if (d42Btn) {
+      d42Btn.addEventListener("click", function () {
+        openScienceSheet("M1");
+      });
+    }
+
+    const launchBtn = document.getElementById("d10-launch-btn");
+    if (launchBtn) {
+      launchBtn.addEventListener("click", async function () {
+        triggerHaptic("impact", "light");
+        try {
+          const res = await apiFetch("api/v1/sessions", {
+            method: "POST",
+            body: {
+              mode: state.sessionSetupMode,
+              topic_id: state.sessionTopicFilter,
+              group_id: state.sessionGroupFilter,
+              max_units: 10,
+            },
+          });
+          state.activeStudySession = res.session;
+          state.studyFormulaRevealed = false;
+          if (!state.activeStudySession || state.activeStudySession.total_units === 0) {
+            vp.insertAdjacentHTML(
+              "beforeend",
+              '<div class="bn wn">' + escapeHtml(t("miniapp.study.d10_empty_queue")) + "</div>"
+            );
+            return;
+          }
+          navigateTo("D11", { pushHistory: false });
+        } catch (_e) {}
+      });
+    }
+  }
+
+  function renderModeOpt(modeCode, label, active) {
+    return (
+      '<button type="button" class="opt ' +
+      (active ? "on" : "") +
+      '" data-sess-mode="' +
+      escapeHtml(modeCode) +
+      '">' +
+      '<span class="rad"></span><span class="grow">' +
+      escapeHtml(label) +
+      "</span></button>"
+    );
+  }
+
+  // ==================== D11: Active Exercise Screen (M1/M3/M4/M5 + Science Link + Draft Persistence) ====================
+  function renderD11(vp) {
+    const sess = state.activeStudySession;
+    if (!sess || !sess.current_unit) {
+      navigateTo("D13", { pushHistory: false });
+      return;
+    }
+
+    const unit = sess.current_unit;
+    const objKey = "miniapp.study.d11_obj_" + (unit.objective || "recall");
+    const primaryMethodId = (unit.science_method_ids && unit.science_method_ids[0]) || "M1";
+
+    // Formula is ONLY shown if allowed_support includes "formula", objective != "discriminate", and user clicks reveal
+    const canShowFormula =
+      unit.objective !== "discriminate" &&
+      unit.formula_support_text &&
+      (unit.allowed_support || []).indexOf("formula") !== -1;
+
+    const introBannerHtml = sess.recommended_intro_method
+      ? '<div class="bn ai row sp" style="align-items:center;">' +
+        '<span class="sm">' +
+        escapeHtml(t("miniapp.study.d10_method_intro_banner", { method: sess.recommended_intro_method })) +
+        "</span>" +
+        '<button type="button" class="btn b2 bsm" id="d11-intro-open-btn">' +
+        escapeHtml(t("miniapp.common.why_this_exercise")) +
+        "</button>" +
+        "</div>"
+      : "";
+
+    const fallbackHtml = sess.fallback_reason
+      ? '<div class="bn in sm">' + escapeHtml(t("miniapp.study.d10_fallback_notice")) + "</div>"
+      : "";
+
+    vp.innerHTML =
+      renderTopBar(
+        t("miniapp.study.d11_progress", { current: sess.current_index + 1, total: sess.total_units }),
+        true
+      ) +
+      introBannerHtml +
+      fallbackHtml +
+      '<section class="card col" style="gap:12px;">' +
+      '<div class="row sp">' +
+      '<span class="chip c-pr">' +
+      escapeHtml(t(objKey)) +
+      "</span>" +
+      '<button type="button" class="btn b3 bsm" id="d11-science-link-btn" style="width:auto; padding:4px 8px;">' +
+      escapeHtml(t("miniapp.common.why_this_exercise")) +
+      "</button>" +
+      "</div>" +
+      '<h1 class="h2">' +
+      escapeHtml(unit.prompt) +
+      "</h1>" +
+      (canShowFormula
+        ? state.studyFormulaRevealed
+          ? '<div class="math">' + escapeHtml(unit.formula_support_text) + "</div>"
+          : '<button type="button" class="btn b2 bsm" id="d11-reveal-formula-btn">' +
+            escapeHtml(t("miniapp.study.d11_show_formula_btn")) +
+            "</button>"
+        : "") +
+      '<div class="seg">' +
+      '<button type="button" class="' +
+      (state.studyAnswerMode === "written" ? "on" : "") +
+      '" data-ans-mode="written">' +
+      escapeHtml(t("miniapp.study.d11_mode_written")) +
+      "</button>" +
+      '<button type="button" class="' +
+      (state.studyAnswerMode === "aloud" ? "on" : "") +
+      '" data-ans-mode="aloud">' +
+      escapeHtml(t("miniapp.study.d11_mode_aloud")) +
+      "</button>" +
+      "</div>" +
+      (state.studyAnswerMode === "written"
+        ? '<textarea id="d11-answer-input" class="inp ta" placeholder="' +
+          escapeHtml(t("miniapp.study.d11_answer_placeholder")) +
+          '">' +
+          escapeHtml(sess.draft_answer || "") +
+          "</textarea>"
+        : "") +
+      (unit.fragment_id
+        ? '<button type="button" class="btn b3 bsm" id="d11-source-btn">' +
+          escapeHtml(t("miniapp.study.d11_show_source_btn")) +
+          "</button>"
+        : "") +
+      '<div class="col" style="gap:8px; margin-top:4px;">' +
+      '<button type="button" class="btn" id="d11-check-btn">' +
+      escapeHtml(t("miniapp.study.d11_reveal_answer_btn")) +
+      "</button>" +
+      '<button type="button" class="btn b2" id="d11-dont-know-btn">' +
+      escapeHtml(t("miniapp.study.d11_dont_know_btn")) +
+      "</button>" +
+      "</div>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    const ansInput = document.getElementById("d11-answer-input");
+    if (ansInput) {
+      ansInput.addEventListener("input", function () {
+        sess.draft_answer = ansInput.value;
+        apiFetch("api/v1/sessions/" + encodeURIComponent(sess.id) + "/draft", {
+          method: "PATCH",
+          body: { draft_answer: ansInput.value, support_seen: sess.draft_support_seen || [] },
+        }).catch(function () {});
+      });
+    }
+
+    vp.querySelectorAll("[data-ans-mode]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.studyAnswerMode = btn.getAttribute("data-ans-mode");
+        renderCurrentScreen();
+      });
+    });
+
+    const revFormulaBtn = document.getElementById("d11-reveal-formula-btn");
+    if (revFormulaBtn) {
+      revFormulaBtn.addEventListener("click", function () {
+        state.studyFormulaRevealed = true;
+        renderCurrentScreen();
+      });
+    }
+
+    const sciBtn = document.getElementById("d11-science-link-btn");
+    if (sciBtn) {
+      sciBtn.addEventListener("click", function () {
+        openScienceSheet(primaryMethodId);
+      });
+    }
+
+    const introOpenBtn = document.getElementById("d11-intro-open-btn");
+    if (introOpenBtn) {
+      introOpenBtn.addEventListener("click", function () {
+        openScienceSheet(sess.recommended_intro_method || primaryMethodId);
+      });
+    }
+
+    const srcBtn = document.getElementById("d11-source-btn");
+    if (srcBtn && unit.fragment_id) {
+      srcBtn.addEventListener("click", async function () {
+        sess.draft_support_seen = (sess.draft_support_seen || []).concat(["source"]);
+        try {
+          await apiFetch("api/v1/sessions/" + encodeURIComponent(sess.id) + "/draft", {
+            method: "PATCH",
+            body: { draft_answer: sess.draft_answer || "", support_seen: ["source"] },
+          });
+          const fRes = await apiFetch("api/v1/fragments/" + encodeURIComponent(unit.fragment_id));
+          if (fRes.fragment) openSourceFragmentSheetD34(fRes.fragment);
+        } catch (_e) {}
+      });
+    }
+
+    const checkBtn = document.getElementById("d11-check-btn");
+    if (checkBtn) {
+      checkBtn.addEventListener("click", function () {
+        triggerHaptic("impact", "light");
+        state.studyCheckedCriteria = (unit.rubric_criteria || []).map(function (_c, idx) {
+          return idx;
+        });
+        state.lastAttemptResult = null;
+        state.lastNeedsCorrective = false;
+        navigateTo("D12");
+      });
+    }
+
+    const dkBtn = document.getElementById("d11-dont-know-btn");
+    if (dkBtn) {
+      dkBtn.addEventListener("click", async function () {
+        triggerHaptic("notification", "warning");
+        await submitAttemptAndTransition("dont_know", []);
+      });
+    }
+  }
+
+  // ==================== D12: Rubric Feedback, Gap Card & Corrective Retry ====================
+  function renderD12(vp) {
+    const sess = state.activeStudySession;
+    if (!sess || !sess.current_unit) {
+      navigateTo("D13", { pushHistory: false });
+      return;
+    }
+    const unit = sess.current_unit;
+    const criteria = unit.rubric_criteria || [];
+
+    if (state.lastNeedsCorrective && state.lastAttemptResult) {
+      const gapText = state.lastAttemptResult.gap_summary || unit.reference_answer;
+      vp.innerHTML =
+        renderTopBar(t("miniapp.study.d12_gap_title"), true) +
+        '<section class="card col" style="gap:12px;">' +
+        '<div class="bn wn col" style="gap:4px;">' +
+        '<div class="b">' +
+        escapeHtml(t("miniapp.study.d12_gap_title")) +
+        "</div>" +
+        '<div class="sm">' +
+        escapeHtml(t("miniapp.study.d12_gap_desc", { gap: gapText })) +
+        "</div>" +
+        "</div>" +
+        '<div class="eyebrow">' +
+        escapeHtml(t("miniapp.study.d12_reference_label")) +
+        "</div>" +
+        '<blockquote class="src">' +
+        escapeHtml(unit.reference_answer) +
+        "</blockquote>" +
+        '<textarea id="d12-retry-input" class="inp ta" placeholder="' +
+        escapeHtml(t("miniapp.study.d12_retry_placeholder")) +
+        '"></textarea>' +
+        '<div class="col" style="gap:8px;">' +
+        '<button type="button" class="btn" id="d12-submit-retry-btn">' +
+        escapeHtml(t("miniapp.study.d12_submit_retry_btn")) +
+        "</button>" +
+        '<button type="button" class="btn b2" id="d12-skip-retry-btn">' +
+        escapeHtml(t("miniapp.study.d12_skip_retry_btn")) +
+        "</button>" +
+        "</div>" +
+        "</section>";
+
+      bindLanguageButtons(vp);
+
+      const retryBtn = document.getElementById("d12-submit-retry-btn");
+      if (retryBtn) {
+        retryBtn.addEventListener("click", async function () {
+          const inp = document.getElementById("d12-retry-input");
+          const val = inp ? inp.value : "";
+          triggerHaptic("notification", "success");
+          try {
+            const res = await apiFetch("api/v1/sessions/" + encodeURIComponent(sess.id) + "/attempts", {
+              method: "POST",
+              body: {
+                exercise_id: unit.exercise_id,
+                phase: "corrective",
+                answer_text: val,
+                answer_mode: "written",
+                grading_mode: "self_check",
+                self_grade: "correct",
+              },
+            });
+            state.activeStudySession = res.session;
+            state.lastNeedsCorrective = false;
+            state.lastAttemptResult = null;
+            if (state.activeStudySession.status === "completed") {
+              navigateTo("D13", { pushHistory: false });
+            } else {
+              navigateTo("D11", { pushHistory: false });
+            }
+          } catch (_e) {}
+        });
+      }
+
+      const skipBtn = document.getElementById("d12-skip-retry-btn");
+      if (skipBtn) {
+        skipBtn.addEventListener("click", async function () {
+          try {
+            const res = await apiFetch("api/v1/sessions/" + encodeURIComponent(sess.id) + "/advance", {
+              method: "POST",
+            });
+            state.activeStudySession = res.session;
+            state.lastNeedsCorrective = false;
+            state.lastAttemptResult = null;
+            if (state.activeStudySession.status === "completed") {
+              navigateTo("D13", { pushHistory: false });
+            } else {
+              navigateTo("D11", { pushHistory: false });
+            }
+          } catch (_e) {}
+        });
+      }
+      return;
+    }
+
+    const criteriaHtml = criteria
+      .map(function (cText, idx) {
+        const checked = state.studyCheckedCriteria.indexOf(idx) !== -1;
+        return (
+          '<button type="button" class="opt ' +
+          (checked ? "on" : "") +
+          '" data-crit-idx="' +
+          idx +
+          '">' +
+          '<span class="cbx ' +
+          (checked ? "on" : "") +
+          '">✓</span>' +
+          '<span class="grow">' +
+          escapeHtml(cText) +
+          "</span>" +
+          "</button>"
+        );
+      })
+      .join("");
+
+    vp.innerHTML =
+      renderTopBar(t("miniapp.study.d12_reference_label"), true) +
+      '<section class="card col" style="gap:12px;">' +
+      '<div class="eyebrow">' +
+      escapeHtml(t("miniapp.study.d12_reference_label")) +
+      "</div>" +
+      '<div class="b">' +
+      escapeHtml(unit.reference_answer) +
+      "</div>" +
+      (unit.explanation ? '<div class="sm mu">' + escapeHtml(unit.explanation) + "</div>" : "") +
+      (criteriaHtml
+        ? '<div class="col" style="gap:8px;"><div class="eyebrow">' +
+          escapeHtml(t("miniapp.study.d12_rubric_label")) +
+          "</div>" +
+          criteriaHtml +
+          "</div>"
+        : "") +
+      '<div class="col" style="gap:8px; margin-top:4px;">' +
+      '<button type="button" class="btn" data-self-grade="correct">' +
+      escapeHtml(t("miniapp.study.d12_self_correct")) +
+      "</button>" +
+      '<button type="button" class="btn b2" data-self-grade="partial">' +
+      escapeHtml(t("miniapp.study.d12_self_partial")) +
+      "</button>" +
+      '<button type="button" class="btn bd" data-self-grade="wrong">' +
+      escapeHtml(t("miniapp.study.d12_self_wrong")) +
+      "</button>" +
+      "</div>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    vp.querySelectorAll("[data-crit-idx]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const cIdx = parseInt(btn.getAttribute("data-crit-idx"), 10);
+        const pos = state.studyCheckedCriteria.indexOf(cIdx);
+        if (pos !== -1) {
+          state.studyCheckedCriteria.splice(pos, 1);
+        } else {
+          state.studyCheckedCriteria.push(cIdx);
+        }
+        renderCurrentScreen();
+      });
+    });
+
+    vp.querySelectorAll("[data-self-grade]").forEach(function (gBtn) {
+      gBtn.addEventListener("click", async function () {
+        const gVal = gBtn.getAttribute("data-self-grade");
+        triggerHaptic("notification", gVal === "correct" ? "success" : "warning");
+        const checkedIndices =
+          gVal === "correct"
+            ? criteria.map(function (_c, idx) {
+                return idx;
+              })
+            : gVal === "wrong"
+            ? []
+            : state.studyCheckedCriteria.slice(0, Math.max(0, criteria.length - 1));
+        await submitAttemptAndTransition(gVal, checkedIndices);
+      });
+    });
+  }
+
+  async function submitAttemptAndTransition(selfGrade, checkedIndices) {
+    const sess = state.activeStudySession;
+    if (!sess || !sess.current_unit) return;
+    const unit = sess.current_unit;
+
+    try {
+      const res = await apiFetch("api/v1/sessions/" + encodeURIComponent(sess.id) + "/attempts", {
+        method: "POST",
+        body: {
+          exercise_id: unit.exercise_id,
+          phase: "first_attempt",
+          answer_text: sess.draft_answer || "",
+          answer_mode: state.studyAnswerMode,
+          grading_mode: "self_check",
+          self_grade: selfGrade,
+          rubric_checked_indices: checkedIndices,
+          source_seen: (sess.draft_support_seen || []).indexOf("source") !== -1,
+        },
+      });
+      state.activeStudySession = res.session;
+      state.lastAttemptResult = res.attempt;
+      state.lastNeedsCorrective = Boolean(res.needs_corrective);
+      state.studyFormulaRevealed = false;
+
+      if (state.lastNeedsCorrective) {
+        navigateTo("D12", { pushHistory: false });
+      } else if (state.activeStudySession.status === "completed") {
+        navigateTo("D13", { pushHistory: false });
+      } else {
+        navigateTo("D11", { pushHistory: false });
+      }
+    } catch (_e) {}
+  }
+
+  // ==================== D13: Study Session Summary ====================
+  function renderD13(vp) {
+    const sess = state.activeStudySession;
+    const sum = (sess && sess.summary) || {
+      independent_ok: 0,
+      assisted_ok: 0,
+      needs_repeat: 0,
+    };
+
+    vp.innerHTML =
+      renderTopBar(t("miniapp.study.d13_title"), false) +
+      '<section class="card cardp col" style="gap:14px; text-align:center; padding:26px 20px;">' +
+      '<h1 class="h1">' +
+      escapeHtml(t("miniapp.study.d13_title")) +
+      "</h1>" +
+      '<p class="mu">' +
+      escapeHtml(t("miniapp.study.d13_subtitle")) +
+      "</p>" +
+      '<div class="col" style="gap:10px; text-align:left;">' +
+      '<div class="bn ok row sp"><span>' +
+      escapeHtml(t("miniapp.study.d13_stat_independent")) +
+      '</span><span class="b">' +
+      sum.independent_ok +
+      "</span></div>" +
+      '<div class="bn in row sp"><span>' +
+      escapeHtml(t("miniapp.study.d13_stat_assisted")) +
+      '</span><span class="b">' +
+      sum.assisted_ok +
+      "</span></div>" +
+      '<div class="bn row sp"><span>' +
+      escapeHtml(t("miniapp.study.d13_stat_repeat")) +
+      '</span><span class="b">' +
+      sum.needs_repeat +
+      "</span></div>" +
+      "</div>" +
+      '<button type="button" class="btn" id="d13-finish-btn">' +
+      escapeHtml(t("miniapp.study.d13_finish_cta")) +
+      "</button>" +
+      "</section>";
+
+    bindLanguageButtons(vp);
+
+    const finBtn = document.getElementById("d13-finish-btn");
+    if (finBtn) {
+      finBtn.addEventListener("click", function () {
+        state.historyStack = [];
+        navigateTo("D03", { pushHistory: false });
       });
     }
   }
